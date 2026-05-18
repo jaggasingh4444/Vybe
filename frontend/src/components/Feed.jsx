@@ -565,6 +565,8 @@ function Feed() {
           new Date(a.latestStory?.createdAt || 0).getTime()
       );
   }, [activeStories, userData?._id]);
+  const ownStoryGroup = storyGroups.find((group) => group.authorId === userData?._id);
+  const visibleStoryGroups = storyGroups.filter((group) => group.authorId !== userData?._id);
 
   const selectedMediaType = useMemo(() => {
     if (!selectedFile) return "";
@@ -1134,6 +1136,7 @@ function Feed() {
             isStoryActive(story)
         ),
       ]);
+      await fetchStories();
       setMessage("Story uploaded.");
     } catch (error) {
       setMessage(error.message || "Story upload failed.");
@@ -1502,6 +1505,9 @@ function Feed() {
         };
       });
       setCaption("");
+      setFeedSearch("");
+      setActiveMobileTab(uploadMode === "reel" ? "reels" : "home");
+      await fetchFeed();
       setCaptionEmojiOpen(false);
       clearSelectedFile();
       setMessage(`${uploadMode === "reel" ? "Reel" : "Post"} uploaded.`);
@@ -3039,12 +3045,35 @@ function Feed() {
         activeMobileTab === "profile" ? "hidden" : activeMobileTab !== "home" ? "hidden lg:block" : ""
       }`}>
         <div className="flex gap-4 min-w-max">
-          <label
-            className={`flex flex-col items-center gap-2 cursor-pointer ${
-              storyUploading ? "pointer-events-none opacity-60" : ""
+          <div
+            className={`relative flex flex-col items-center gap-2 ${
+              storyUploading ? "opacity-60" : ""
             }`}
           >
-            <div className="relative w-16 h-16 rounded-full p-[2px] bg-gradient-to-tr from-pink-500 via-red-500 to-yellow-400">
+            <button
+              type="button"
+              onClick={() => {
+                if (!ownStoryGroup?.stories?.length) return;
+                const firstUnviewedStory = ownStoryGroup.stories.find(
+                  (story) => !story.viewers?.some((id) => id.toString() === userData?._id)
+                );
+                openStory(firstUnviewedStory || ownStoryGroup.stories[0]);
+              }}
+              disabled={storyUploading || !ownStoryGroup?.stories?.length}
+              className={`relative w-16 h-16 rounded-full p-[2px] ${
+                ownStoryGroup?.stories?.length
+                  ? ownStoryGroup.hasUnviewed
+                    ? "bg-gradient-to-tr from-pink-500 via-red-500 to-yellow-400"
+                    : "bg-gray-700"
+                  : "bg-gradient-to-tr from-pink-500 via-red-500 to-yellow-400"
+              } disabled:cursor-default`}
+              aria-label={ownStoryGroup?.stories?.length ? "Open your story" : "No story yet"}
+              title={
+                ownStoryGroup?.stories?.length
+                  ? `${ownStoryGroup.stories.length} ${ownStoryGroup.stories.length === 1 ? "story" : "stories"} · ${getStoryTimeLeftLabel(ownStoryGroup.latestStory, storyClock)}`
+                  : "Add story"
+              }
+            >
               <img
                 src={mediaUrl(userData?.profileImage) || dp}
                 alt="Your story"
@@ -3053,21 +3082,23 @@ function Feed() {
                   event.currentTarget.src = dp;
                 }}
               />
-              <span className="absolute -right-1 -bottom-1 w-6 h-6 rounded-full bg-blue-600 border-2 border-black text-white flex items-center justify-center text-sm">
-                <FiPlus />
-              </span>
-            </div>
-            <span className="text-white text-xs max-w-16 truncate">You</span>
-            <input
-              type="file"
-              accept="image/*,video/*"
-              onChange={handleStoryFileChange}
-              disabled={storyUploading}
-              className="hidden"
-            />
-          </label>
+            </button>
+            <label className="absolute right-0 bottom-5 w-6 h-6 rounded-full bg-blue-600 border-2 border-black text-white flex items-center justify-center text-sm cursor-pointer">
+              <FiPlus />
+              <input
+                type="file"
+                accept="image/*,video/*"
+                onChange={handleStoryFileChange}
+                disabled={storyUploading}
+                className="hidden"
+              />
+            </label>
+            <span className="text-white text-xs max-w-16 truncate">
+              {ownStoryGroup?.stories?.length ? "Your story" : "You"}
+            </span>
+          </div>
 
-          {storyGroups.map((group) => {
+          {visibleStoryGroups.map((group) => {
             const firstUnviewedStory = group.stories.find(
               (story) => !story.viewers?.some((id) => id.toString() === userData?._id)
             );
