@@ -15,6 +15,7 @@ const REACTION_OPTIONS = ["❤️", "😂", "🔥", "👏", "😮", "😢", "�
 const STORY_EXPIRY_MS = 24 * 60 * 60 * 1000;
 const STORY_VIEW_DURATION_MS = 7000;
 const STATUS_AUTO_DISMISS_MS = 1800;
+const CAPTION_LIMIT = 500;
 const TYPING_IDLE_MS = 1400;
 const TYPING_REFRESH_MS = 2000;
 const TYPING_VISIBLE_MS = 3000;
@@ -22,6 +23,7 @@ const formatUnreadCount = (count) => (count > 10 ? "10+" : count);
 const shouldAutoDismissStatus = (status) => /\b(uploaded|deleted)\b/i.test(status || "");
 const getContentKey = (item) => (item?._id && item?.type ? `${item.type}-${item._id}` : "");
 const getReplyKey = (item, commentId) => `${getContentKey(item)}-${commentId}-reply`;
+const isTextPost = (item) => item?.type === "post" && item?.mediaType === "text";
 const sharedContentToFeedItem = (sharedContent) => {
   if (!sharedContent?.contentId) return null;
 
@@ -1448,9 +1450,15 @@ function Feed() {
   const handleUpload = async (event) => {
     event.preventDefault();
     setMessage("");
+    const trimmedCaption = caption.trim();
 
-    if (!selectedFile) {
-      setMessage("Choose a file before uploading.");
+    if (mode === "reel" && !selectedFile) {
+      setMessage("Choose a video before sharing a reel.");
+      return;
+    }
+
+    if (!selectedFile && !trimmedCaption) {
+      setMessage("Write something or choose a photo/video.");
       return;
     }
 
@@ -1458,13 +1466,15 @@ function Feed() {
     setUploadProgress(4);
 
     try {
-      const media = await readFileAsDataUrl(selectedFile);
-      const uploadMode = selectedMediaType === "video" ? "reel" : "post";
+      const media = selectedFile ? await readFileAsDataUrl(selectedFile) : "";
+      const uploadMode = selectedFile && selectedMediaType === "video" ? "reel" : "post";
       const endpoint = uploadMode === "reel" ? "/api/content/reels" : "/api/content/posts";
       const payload =
         uploadMode === "reel"
-          ? { caption, media }
-          : { caption, media, mediaType: selectedMediaType };
+          ? { caption: trimmedCaption, media }
+          : selectedFile
+            ? { caption: trimmedCaption, media, mediaType: selectedMediaType }
+            : { caption: trimmedCaption };
       setUploadProgress(8);
 
       const data = await uploadJsonWithProgress({
@@ -2405,6 +2415,8 @@ function Feed() {
     : false;
   const isMobileReelFeed = isMobile && activeMobileTab === "reels";
   const isMobileChatTab = isMobile && activeMobileTab === "chat";
+  const canShareCreate =
+    mode === "reel" ? Boolean(selectedFile && selectedMediaType === "video") : Boolean(selectedFile || caption.trim());
 
   const renderCommentThread = (item, comment, options = {}) => {
     const contentKey = getContentKey(item);
@@ -3349,7 +3361,13 @@ function Feed() {
                         onClick={() => setSelectedProfileItem(item)}
                         title={item.caption || item.type}
                       >
-                        {item.mediaType === "video" ? (
+                        {isTextPost(item) ? (
+                          <div className="flex h-full w-full items-center justify-center bg-[#080808] p-3">
+                            <p className="max-h-full overflow-hidden break-words text-center text-sm font-semibold text-white">
+                              {item.caption}
+                            </p>
+                          </div>
+                        ) : item.mediaType === "video" ? (
                           <video
                             src={mediaUrl(item.media)}
                             muted
@@ -3868,7 +3886,13 @@ function Feed() {
                     : "bg-[#101010]"
                 }
               >
-                {item.mediaType === "video" ? (
+                {isTextPost(item) ? (
+                  <div className="min-h-[220px] w-full bg-[#080808] px-6 py-10 flex items-center justify-center">
+                    <p className="max-w-xl whitespace-pre-wrap break-words text-center text-2xl font-semibold leading-snug text-white">
+                      {item.caption}
+                    </p>
+                  </div>
+                ) : item.mediaType === "video" ? (
                   <video
                     src={mediaUrl(item.media)}
                     controls
@@ -3937,7 +3961,7 @@ function Feed() {
                   <FaRegBookmark />
                 </div>
                 <p className="text-white text-sm font-semibold mt-4">{item.likes?.length || 0} likes</p>
-                {item.caption ? (
+                {item.caption && !isTextPost(item) ? (
                   <p className="text-sm mt-1">
                     <span className="text-white font-semibold mr-2">{item.author?.userName || "vybe_user"}</span>
                     <span className="text-gray-300">{item.caption}</span>
@@ -4021,7 +4045,7 @@ function Feed() {
               <div className="flex items-center gap-2">
                 <button
                   type="submit"
-                  disabled={uploading}
+                  disabled={uploading || !canShareCreate}
                   className="h-9 px-4 rounded-md bg-white text-black font-semibold disabled:opacity-60"
                 >
                   {uploading ? `${uploadProgress}%` : "Share"}
@@ -4061,9 +4085,9 @@ function Feed() {
                 </button>
               </div>
 
-              <div className="relative flex items-center gap-2">
+              <div className="relative flex items-start gap-2">
                 {captionEmojiOpen ? (
-                  <div className="absolute bottom-12 left-0 z-10 grid grid-cols-6 gap-1 rounded-lg border border-gray-800 bg-[#080808] p-2 shadow-2xl">
+                  <div className="absolute bottom-[6.5rem] left-0 z-10 grid grid-cols-6 gap-1 rounded-lg border border-gray-800 bg-[#080808] p-2 shadow-2xl">
                     {EMOJI_OPTIONS.map((emoji) => (
                       <button
                         key={emoji}
@@ -4085,13 +4109,13 @@ function Feed() {
                 >
                   <FiSmile />
                 </button>
-                <input
+                <textarea
                   value={caption}
                   onChange={(event) => setCaption(event.target.value)}
-                  placeholder={`Caption for your ${mode}...`}
+                  placeholder={mode === "post" ? "Write something or add a caption..." : "Caption for your reel..."}
                   disabled={uploading}
-                  className="min-w-0 flex-1 h-11 rounded-md bg-[#111] border border-gray-800 px-3 text-white placeholder:text-gray-600 outline-none disabled:opacity-60"
-                  maxLength={220}
+                  className="min-w-0 flex-1 h-24 resize-none rounded-md bg-[#111] border border-gray-800 px-3 py-3 text-white placeholder:text-gray-600 outline-none disabled:opacity-60"
+                  maxLength={CAPTION_LIMIT}
                 />
               </div>
 
@@ -4119,7 +4143,7 @@ function Feed() {
                   <span className="w-10 h-10 rounded-full bg-[#151515] flex items-center justify-center text-xl">
                     {mode === "reel" ? <FiVideo /> : <FiPlus />}
                   </span>
-                  <span className="text-sm">{mode === "reel" ? "Choose a video reel" : "Choose an image or video"}</span>
+                  <span className="text-sm">{mode === "reel" ? "Choose a video reel" : "Add photo/video or share text only"}</span>
                   <input
                     type="file"
                     accept={mode === "reel" ? "video/*" : "image/*,video/*"}
@@ -4146,7 +4170,7 @@ function Feed() {
               ) : null}
 
               <p className={`text-sm ${shouldAutoDismissStatus(message) ? "text-green-400" : "text-gray-500"}`}>
-                {message || `${220 - caption.length} characters left`}
+                {message || `${CAPTION_LIMIT - caption.length} characters left`}
               </p>
             </div>
           </form>
@@ -4272,7 +4296,13 @@ function Feed() {
             </div>
 
             <div className="bg-black flex items-center justify-center">
-              {selectedProfileItem.mediaType === "video" ? (
+              {isTextPost(selectedProfileItem) ? (
+                <div className="flex min-h-[320px] w-full items-center justify-center bg-[#080808] px-8 py-12">
+                  <p className="max-w-2xl whitespace-pre-wrap break-words text-center text-3xl font-semibold leading-snug text-white">
+                    {selectedProfileItem.caption}
+                  </p>
+                </div>
+              ) : selectedProfileItem.mediaType === "video" ? (
                 <video
                   src={mediaUrl(selectedProfileItem.media)}
                   controls
@@ -4306,7 +4336,7 @@ function Feed() {
                 </div>
               </div>
 
-              {selectedProfileItem.caption ? (
+              {selectedProfileItem.caption && !isTextPost(selectedProfileItem) ? (
                 <p className="mt-3 text-sm">
                   <span className="font-semibold text-white mr-2">
                     {selectedProfileItem.author?.userName || "vybe_user"}

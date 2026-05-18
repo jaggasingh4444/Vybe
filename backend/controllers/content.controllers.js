@@ -22,8 +22,8 @@ const serializeContent = (item, type) => ({
   _id: item._id,
   type,
   author: item.author,
-  mediaType: item.mediaType || "video",
-  media: item.media,
+  mediaType: item.mediaType || (type === "reel" ? "video" : "text"),
+  media: item.media || "",
   caption: item.caption || "",
   likes: item.likes || [],
   comments: item.comments || [],
@@ -383,21 +383,27 @@ export const deleteStory = async (req, res) => {
 export const createPost = async (req, res) => {
   try {
     const { caption = "", media, mediaType } = req.body;
+    const trimmedCaption = caption.trim();
+    const hasMedia = Boolean(media);
 
-    if (!["image", "video"].includes(mediaType)) {
+    if (!hasMedia && !trimmedCaption) {
+      return res.status(400).json({ message: "Write something or choose a photo/video" });
+    }
+
+    if (hasMedia && !["image", "video"].includes(mediaType)) {
       return res.status(400).json({ message: "Post media must be an image or video" });
     }
 
-    if (!isDataUrl(media)) {
+    if (hasMedia && !isDataUrl(media)) {
       return res.status(400).json({ message: "Valid media file is required" });
     }
 
-    const storedMedia = await saveDataUrlMedia(media, "content", req);
+    const storedMedia = hasMedia ? await saveDataUrlMedia(media, "content", req) : "";
     const post = await Post.create({
       author: req.userId,
-      mediaType,
+      mediaType: hasMedia ? mediaType : "text",
       media: storedMedia,
-      caption: caption.trim(),
+      caption: trimmedCaption,
     });
 
     await User.findByIdAndUpdate(req.userId, { $push: { posts: post._id } });

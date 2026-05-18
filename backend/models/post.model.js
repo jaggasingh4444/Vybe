@@ -8,12 +8,12 @@ const postSchema = new mongoose.Schema({
     },
     mediaType:{
         type:String,
-        enum: ["image","video"],
-        required:true
+        enum: ["image","video","text"],
+        default:"text"
     },
     media:{
         type:String,
-        required:true
+        default:""
     },
     caption:{
         type:String
