@@ -1,0 +1,18 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+    commands:
+      - cd backend
+      - npm install
+  build:
+    commands:
+      - echo "Backend build completed"
+
+artifacts:
+  base-directory: backend
+  files:
+    - '**/*'
+  discard-paths: no
