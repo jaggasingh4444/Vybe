@@ -4,8 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon --watch index.js --watch config --watch controllers --watch middlewares --watch models --watch routes index.js"
-  },
+  "start": "node index.js",
+  "dev": "nodemon --watch index.js --watch config --watch controllers --watch models --watch routes index.js"
+},
   "author": "",
   "license": "ISC",
   "type": "module",
