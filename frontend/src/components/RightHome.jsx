@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import dp from "../assets/dp.png";
-import { apiUrl } from "../config/api";
+import { apiUrl, mediaUrl } from "../config/api";
 import { setSuggestedUsers, setUserData } from "../redux/userSlice";
 import { FiChevronLeft, FiChevronRight, FiDownload, FiImage, FiMessageCircle, FiMoreVertical, FiSearch, FiSend, FiSmile, FiVideo, FiX } from "react-icons/fi";
 import { getTabAuthHeaders, withTabAuth } from "../utils/tabAuth";
@@ -821,9 +821,9 @@ function RightHome() {
           <div className="flex gap-3 p-2">
             <div className="h-20 w-14 shrink-0 overflow-hidden rounded-md bg-black">
               {sharedItem.mediaType === "video" ? (
-                <video src={sharedItem.media} muted playsInline preload="metadata" className="h-full w-full object-cover" />
+                <video src={mediaUrl(sharedItem.media)} muted playsInline preload="metadata" className="h-full w-full object-cover" />
               ) : (
-                <img src={sharedItem.media} alt="Shared media" className="h-full w-full object-cover" />
+                <img src={mediaUrl(sharedItem.media)} alt="Shared media" className="h-full w-full object-cover" />
               )}
             </div>
             <div className="min-w-0 flex-1 py-1">
@@ -899,7 +899,7 @@ function RightHome() {
               {attachment.mediaType === "video" ? (
                 <>
                   <video
-                    src={attachment.media}
+                    src={mediaUrl(attachment.media)}
                     muted
                     playsInline
                     preload="metadata"
@@ -911,7 +911,7 @@ function RightHome() {
                 </>
               ) : (
                 <img
-                  src={attachment.media}
+                  src={mediaUrl(attachment.media)}
                   alt="Chat media"
                   className={mediaClass}
                 />
@@ -974,7 +974,7 @@ function RightHome() {
   };
 
   return (
-    <aside className="w-[25%] h-screen sticky top-0 bg-black hidden lg:flex flex-col px-5 py-6 border-l border-gray-900 overflow-hidden">
+    <aside className="hidden lg:flex lg:w-[300px] xl:w-[360px] shrink-0 h-screen sticky top-0 bg-black flex-col px-5 py-6 border-l border-gray-900 overflow-hidden">
       <div className="flex items-center justify-between mb-4 shrink-0">
         <h2 className="text-white font-semibold">Suggested</h2>
         <span className="text-gray-500 text-sm">{suggestedUsers.length}</span>
@@ -996,9 +996,12 @@ function RightHome() {
                     aria-label={`Open ${user.userName} profile`}
                   >
                     <img
-                      src={user.profileImage || dp}
+                      src={mediaUrl(user.profileImage) || dp}
                       alt={user.userName}
                       className="w-10 h-10 rounded-full object-cover"
+                      onError={(event) => {
+                        event.currentTarget.src = dp;
+                      }}
                     />
                     {isUserOnline(user) ? (
                       <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-green-500 border-2 border-black" />
@@ -1086,9 +1089,12 @@ function RightHome() {
                     aria-label={`Open ${user.userName} profile`}
                   >
                     <img
-                      src={user.profileImage || dp}
+                      src={mediaUrl(user.profileImage) || dp}
                       alt={user.userName}
                       className="w-9 h-9 rounded-full object-cover"
+                      onError={(event) => {
+                        event.currentTarget.src = dp;
+                      }}
                     />
                     {isUserOnline(user) ? (
                       <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-black" />
@@ -1146,9 +1152,12 @@ function RightHome() {
             >
               <span className="relative shrink-0">
                 <img
-                  src={selectedChat.profileImage || dp}
+                  src={mediaUrl(selectedChat.profileImage) || dp}
                   alt={selectedChat.userName}
                   className="w-9 h-9 rounded-full object-cover"
+                  onError={(event) => {
+                    event.currentTarget.src = dp;
+                  }}
                 />
                 {isUserOnline(selectedChat) ? (
                   <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-black" />
@@ -1391,9 +1400,9 @@ function RightHome() {
                 {messageMedia.map((item, index) => (
                   <div key={`${item.name}-${index}`} className="relative h-14 w-14 shrink-0 overflow-hidden rounded-md bg-[#111]">
                     {item.mediaType === "video" ? (
-                      <video src={item.media} muted playsInline preload="metadata" className="h-full w-full object-cover" />
+                      <video src={mediaUrl(item.media)} muted playsInline preload="metadata" className="h-full w-full object-cover" />
                     ) : (
-                      <img src={item.media} alt="Selected media" className="h-full w-full object-cover" />
+                      <img src={mediaUrl(item.media)} alt="Selected media" className="h-full w-full object-cover" />
                     )}
                     <button
                       type="button"
@@ -1511,7 +1520,7 @@ function RightHome() {
               <div className="flex h-full items-center justify-center">
                 {activeChatMedia.mediaType === "video" ? (
                   <video
-                    src={activeChatMedia.media}
+                    src={mediaUrl(activeChatMedia.media)}
                     controls
                     autoPlay
                     playsInline
@@ -1519,7 +1528,7 @@ function RightHome() {
                   />
                 ) : (
                   <img
-                    src={activeChatMedia.media}
+                    src={mediaUrl(activeChatMedia.media)}
                     alt="Opened chat media"
                     className="max-h-full max-w-full rounded-md object-contain"
                   />

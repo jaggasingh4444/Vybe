@@ -3,7 +3,7 @@ import logo from "../assets/logo1.png";
 import dp from "../assets/dp.png";
 import { useDispatch, useSelector } from "react-redux";
 import { logout, setUserData } from "../redux/userSlice";
-import { apiUrl } from "../config/api";
+import { apiUrl, mediaUrl } from "../config/api";
 import { markTabLoggedOut } from "../utils/tabAuth";
 import {
   FiBell,
@@ -204,7 +204,7 @@ function LeftHome() {
   ];
 
   return (
-    <aside className="w-[25%] hidden lg:flex min-h-[100vh] bg-black border-r border-gray-900 flex-col">
+    <aside className="hidden lg:flex lg:w-[300px] xl:w-[340px] shrink-0 min-h-[100vh] bg-black border-r border-gray-900 flex-col">
       <div className="w-full h-[96px] flex items-center justify-between px-6">
         <img src={logo} alt="logo" className="w-[92px]" />
         <div className="flex items-center gap-4 text-white text-2xl">
@@ -232,9 +232,12 @@ function LeftHome() {
             aria-label="Open profile"
           >
             <img
-              src={userData?.profileImage || dp}
+              src={mediaUrl(userData?.profileImage) || dp}
               alt="profile"
               className="w-full h-full object-cover"
+              onError={(event) => {
+                event.currentTarget.src = dp;
+              }}
             />
           </button>
 
@@ -316,7 +319,14 @@ function LeftHome() {
             <form onSubmit={handleSaveProfile} className="p-5 flex flex-col gap-5">
               <div className="flex items-center gap-4">
                 <div className="relative w-20 h-20 rounded-full overflow-hidden bg-[#171717] border border-gray-800 shrink-0">
-                  <img src={profileImage || dp} alt="Profile preview" className="w-full h-full object-cover" />
+                  <img
+                    src={mediaUrl(profileImage) || dp}
+                    alt="Profile preview"
+                    className="w-full h-full object-cover"
+                    onError={(event) => {
+                      event.currentTarget.src = dp;
+                    }}
+                  />
                   <label className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 flex items-center justify-center cursor-pointer">
                     <FiCamera className="text-2xl" />
                     <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />

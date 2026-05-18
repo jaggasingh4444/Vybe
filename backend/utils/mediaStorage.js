@@ -16,8 +16,16 @@ const extensionMap = {
 export const isDataUrl = (value) =>
   typeof value === "string" && dataUrlPattern.test(value);
 
-export const getPublicOrigin = (req) =>
-  process.env.SERVER_URL || `${req.protocol}://${req.get("host")}`;
+export const getPublicOrigin = (req) => {
+  if (process.env.SERVER_URL) return process.env.SERVER_URL.replace(/\/$/, "");
+
+  const forwardedProtocol = req.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const forwardedHost = req.get("x-forwarded-host")?.split(",")[0]?.trim();
+  const protocol = forwardedProtocol || req.protocol;
+  const host = forwardedHost || req.get("host");
+
+  return `${protocol}://${host}`;
+};
 
 export const saveDataUrlMedia = async (dataUrl, folder, req) => {
   const match = typeof dataUrl === "string" ? dataUrl.match(dataUrlPattern) : null;

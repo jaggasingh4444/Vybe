@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import dp from "../assets/dp.png";
 import { FaHeart, FaRegBookmark, FaRegComment, FaRegHeart } from "react-icons/fa6";
 import { FiArrowLeft, FiBell, FiCamera, FiChevronLeft, FiChevronRight, FiDownload, FiHome, FiImage, FiLock, FiLogOut, FiMessageCircle, FiMoreVertical, FiPlus, FiSave, FiSearch, FiSend, FiSettings, FiSmile, FiTrash2, FiUser, FiVideo, FiX } from "react-icons/fi";
-import { apiUrl } from "../config/api";
+import { apiUrl, mediaUrl } from "../config/api";
 import { logout, setUserData } from "../redux/userSlice";
 import { getTabAuthHeaders, markTabLoggedOut, withTabAuth } from "../utils/tabAuth";
 import { downloadMediaFile } from "../utils/mediaDownload";
@@ -178,7 +178,9 @@ const uploadJsonWithProgress = ({ url, payload, onProgress, errorMessage = "Uplo
 
     xhr.open("POST", url, true);
     xhr.withCredentials = true;
-    xhr.setRequestHeader("Content-Type", "application/json");
+    getTabAuthHeaders({ "Content-Type": "application/json" }).forEach((value, key) => {
+      xhr.setRequestHeader(key, value);
+    });
 
     xhr.upload.onprogress = (event) => {
       if (!event.lengthComputable) return;
@@ -2572,9 +2574,9 @@ function Feed() {
           <div className="flex gap-3 p-2">
             <div className="h-20 w-14 shrink-0 overflow-hidden rounded-md bg-black">
               {sharedItem.mediaType === "video" ? (
-                <video src={sharedItem.media} muted playsInline preload="metadata" className="h-full w-full object-cover" />
+                <video src={mediaUrl(sharedItem.media)} muted playsInline preload="metadata" className="h-full w-full object-cover" />
               ) : (
-                <img src={sharedItem.media} alt="Shared media" className="h-full w-full object-cover" />
+                <img src={mediaUrl(sharedItem.media)} alt="Shared media" className="h-full w-full object-cover" />
               )}
             </div>
             <div className="min-w-0 flex-1 py-1">
@@ -2646,7 +2648,7 @@ function Feed() {
               {attachment.mediaType === "video" ? (
                 <>
                   <video
-                    src={attachment.media}
+                    src={mediaUrl(attachment.media)}
                     muted
                     playsInline
                     preload="metadata"
@@ -2658,7 +2660,7 @@ function Feed() {
                 </>
               ) : (
                 <img
-                  src={attachment.media}
+                  src={mediaUrl(attachment.media)}
                   alt="Chat media"
                   className={mediaClass}
                 />
@@ -2811,7 +2813,7 @@ function Feed() {
     <div
       ref={feedRootRef}
       data-vybe-feed-root
-      className={`lg:w-[50%] w-full bg-black relative border-x border-gray-900 ${
+      className={`w-full lg:flex-1 lg:max-w-[760px] bg-black relative border-x border-gray-900 ${
         isMobileChatTab ? "pb-0" : "pb-20"
       } lg:pb-0 ${
         isMobileChatTab
@@ -2972,9 +2974,12 @@ function Feed() {
                       >
                         <span className="relative shrink-0">
                           <img
-                            src={feedUser.profileImage || dp}
+                            src={mediaUrl(feedUser.profileImage) || dp}
                             alt={feedUser.userName}
                             className="w-10 h-10 rounded-full object-cover"
+                            onError={(event) => {
+                              event.currentTarget.src = dp;
+                            }}
                           />
                           {isUserOnline(feedUser) ? (
                             <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-black" />
@@ -3029,9 +3034,12 @@ function Feed() {
           >
             <div className="relative w-16 h-16 rounded-full p-[2px] bg-gradient-to-tr from-pink-500 via-red-500 to-yellow-400">
               <img
-                src={userData?.profileImage || dp}
+                src={mediaUrl(userData?.profileImage) || dp}
                 alt="Your story"
                 className="w-full h-full rounded-full object-cover border-2 border-black"
+                onError={(event) => {
+                  event.currentTarget.src = dp;
+                }}
               />
               <span className="absolute -right-1 -bottom-1 w-6 h-6 rounded-full bg-blue-600 border-2 border-black text-white flex items-center justify-center text-sm">
                 <FiPlus />
@@ -3070,9 +3078,12 @@ function Feed() {
                   }`}
                 >
                   <img
-                    src={group.author?.profileImage || dp}
+                    src={mediaUrl(group.author?.profileImage) || dp}
                     alt={group.author?.userName || "Story"}
                     className="w-full h-full rounded-full object-cover border-2 border-black"
+                    onError={(event) => {
+                      event.currentTarget.src = dp;
+                    }}
                   />
                 </div>
                 <span className="text-white text-xs max-w-16 truncate">
@@ -3136,9 +3147,12 @@ function Feed() {
                   >
                     <span className="relative">
                       <img
-                        src={suggestedUser.profileImage || dp}
+                        src={mediaUrl(suggestedUser.profileImage) || dp}
                         alt={suggestedUser.userName}
                         className="w-16 h-16 rounded-full object-cover border border-gray-800"
+                        onError={(event) => {
+                          event.currentTarget.src = dp;
+                        }}
                       />
                       {isUserOnline(suggestedUser) ? (
                         <span className="absolute bottom-1 right-1 w-3 h-3 rounded-full bg-green-500 border-2 border-black" />
@@ -3203,9 +3217,12 @@ function Feed() {
                 <div className="flex items-center gap-5">
                   <span className="relative shrink-0">
                     <img
-                      src={activeProfileUser.profileImage || dp}
+                      src={mediaUrl(activeProfileUser.profileImage) || dp}
                       alt={activeProfileUser.userName || "Profile"}
                       className="w-24 h-24 rounded-full object-cover border border-gray-800"
+                      onError={(event) => {
+                        event.currentTarget.src = dp;
+                      }}
                     />
                     {isUserOnline(activeProfileUser) ? (
                       <span className="absolute bottom-2 right-1 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-black" />
@@ -3334,7 +3351,7 @@ function Feed() {
                       >
                         {item.mediaType === "video" ? (
                           <video
-                            src={item.media}
+                            src={mediaUrl(item.media)}
                             muted
                             playsInline
                             preload="metadata"
@@ -3342,7 +3359,7 @@ function Feed() {
                           />
                         ) : (
                           <img
-                            src={item.media}
+                            src={mediaUrl(item.media)}
                             alt={item.caption || "Profile post"}
                             className="w-full h-full object-cover"
                           />
@@ -3391,9 +3408,12 @@ function Feed() {
                   >
                     <span className="relative shrink-0">
                       <img
-                        src={selectedMobileChat.profileImage || dp}
+                        src={mediaUrl(selectedMobileChat.profileImage) || dp}
                         alt={selectedMobileChat.userName}
                         className="w-9 h-9 rounded-full object-cover"
+                        onError={(event) => {
+                          event.currentTarget.src = dp;
+                        }}
                       />
                       {isUserOnline(selectedMobileChat) ? (
                         <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-black" />
@@ -3607,9 +3627,9 @@ function Feed() {
                       {mobileMessageMedia.map((item, index) => (
                         <div key={`${item.name}-${index}`} className="relative h-14 w-14 shrink-0 overflow-hidden rounded-md bg-[#111]">
                           {item.mediaType === "video" ? (
-                            <video src={item.media} muted playsInline preload="metadata" className="h-full w-full object-cover" />
+                            <video src={mediaUrl(item.media)} muted playsInline preload="metadata" className="h-full w-full object-cover" />
                           ) : (
-                            <img src={item.media} alt="Selected media" className="h-full w-full object-cover" />
+                            <img src={mediaUrl(item.media)} alt="Selected media" className="h-full w-full object-cover" />
                           )}
                           <button
                             type="button"
@@ -3721,9 +3741,12 @@ function Feed() {
                             aria-label={`Open ${chatUser.userName} profile`}
                           >
                             <img
-                              src={chatUser.profileImage || dp}
+                              src={mediaUrl(chatUser.profileImage) || dp}
                               alt={chatUser.userName}
                               className="w-11 h-11 rounded-full object-cover"
+                              onError={(event) => {
+                                event.currentTarget.src = dp;
+                              }}
                             />
                             {isUserOnline(chatUser) ? (
                               <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-green-500 border-2 border-black" />
@@ -3811,9 +3834,12 @@ function Feed() {
                   className="flex items-center gap-3 min-w-0 text-left"
                 >
                   <img
-                    src={item.author?.profileImage || dp}
+                    src={mediaUrl(item.author?.profileImage) || dp}
                     alt="profile"
                     className="w-10 h-10 rounded-full object-cover"
+                    onError={(event) => {
+                      event.currentTarget.src = dp;
+                    }}
                   />
                   <div className="min-w-0">
                     <p className="text-white font-semibold truncate">{item.author?.userName || "vybe_user"}</p>
@@ -3844,7 +3870,7 @@ function Feed() {
               >
                 {item.mediaType === "video" ? (
                   <video
-                    src={item.media}
+                    src={mediaUrl(item.media)}
                     controls
                     muted={feedVideosMuted}
                     autoPlay
@@ -3874,7 +3900,7 @@ function Feed() {
                   />
                 ) : (
                   <img
-                    src={item.media}
+                    src={mediaUrl(item.media)}
                     alt={item.caption || "Post media"}
                     className={
                       isMobileReelFeed
@@ -3978,7 +4004,14 @@ function Feed() {
           >
             <div className="h-14 px-4 flex items-center justify-between border-b border-gray-900">
               <div className="flex items-center gap-3 min-w-0">
-                <img src={userData?.profileImage || dp} alt="profile" className="w-9 h-9 rounded-full object-cover" />
+                <img
+                  src={mediaUrl(userData?.profileImage) || dp}
+                  alt="profile"
+                  className="w-9 h-9 rounded-full object-cover"
+                  onError={(event) => {
+                    event.currentTarget.src = dp;
+                  }}
+                />
                 <div className="min-w-0">
                   <p className="font-semibold truncate">{userData?.userName || "vybe_user"}</p>
                   <p className="text-xs text-gray-500">Create {mode === "reel" ? "reel" : "post"}</p>
@@ -4159,9 +4192,12 @@ function Feed() {
                       className="min-h-14 rounded-lg border border-gray-900 bg-[#080808] px-3 py-2 flex items-center gap-3"
                     >
                       <img
-                        src={shareUser.profileImage || dp}
+                        src={mediaUrl(shareUser.profileImage) || dp}
                         alt={shareUser.userName}
                         className="w-10 h-10 rounded-full object-cover"
+                        onError={(event) => {
+                          event.currentTarget.src = dp;
+                        }}
                       />
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold truncate">{shareUser.userName}</p>
@@ -4208,9 +4244,12 @@ function Feed() {
                 className="min-w-0 flex items-center gap-3 text-left"
               >
                 <img
-                  src={selectedProfileItem.author?.profileImage || dp}
+                  src={mediaUrl(selectedProfileItem.author?.profileImage) || dp}
                   alt={selectedProfileItem.author?.userName || "profile"}
                   className="w-9 h-9 rounded-full object-cover"
+                  onError={(event) => {
+                    event.currentTarget.src = dp;
+                  }}
                 />
                 <div className="min-w-0">
                   <p className="text-sm font-semibold truncate">
@@ -4235,7 +4274,7 @@ function Feed() {
             <div className="bg-black flex items-center justify-center">
               {selectedProfileItem.mediaType === "video" ? (
                 <video
-                  src={selectedProfileItem.media}
+                  src={mediaUrl(selectedProfileItem.media)}
                   controls
                   autoPlay
                   playsInline
@@ -4243,7 +4282,7 @@ function Feed() {
                 />
               ) : (
                 <img
-                  src={selectedProfileItem.media}
+                  src={mediaUrl(selectedProfileItem.media)}
                   alt={selectedProfileItem.caption || "Profile media"}
                   className="w-full max-h-[72vh] object-contain bg-black"
                 />
@@ -4339,9 +4378,12 @@ function Feed() {
             <div className="h-16 px-4 flex items-center justify-between">
               <div className="flex items-center gap-3 min-w-0">
                 <img
-                  src={selectedStory.author?.profileImage || dp}
+                  src={mediaUrl(selectedStory.author?.profileImage) || dp}
                   alt={selectedStory.author?.userName || "story"}
                   className="w-11 h-11 rounded-full object-cover border border-white/10"
+                  onError={(event) => {
+                    event.currentTarget.src = dp;
+                  }}
                 />
                 <div className="min-w-0">
                   <p className="text-white text-[15px] font-semibold truncate">
@@ -4420,7 +4462,7 @@ function Feed() {
             >
               {selectedStory.mediaType === "video" ? (
                 <video
-                  src={selectedStory.media}
+                  src={mediaUrl(selectedStory.media)}
                   controls
                   autoPlay
                   playsInline
@@ -4429,7 +4471,7 @@ function Feed() {
                 />
               ) : (
                 <img
-                  src={selectedStory.media}
+                  src={mediaUrl(selectedStory.media)}
                   alt="Story"
                   data-story-media
                   className="w-full max-h-[calc(100vh-190px)] object-contain"
@@ -4503,7 +4545,14 @@ function Feed() {
             <form onSubmit={handleMobileSaveProfile} className="p-4 flex flex-col gap-4">
               <div className="flex items-center gap-4">
                 <div className="relative w-16 h-16 rounded-full overflow-hidden bg-[#171717]">
-                  <img src={mobileProfileImage || dp} alt="Profile preview" className="w-full h-full object-cover" />
+                  <img
+                    src={mediaUrl(mobileProfileImage) || dp}
+                    alt="Profile preview"
+                    className="w-full h-full object-cover"
+                    onError={(event) => {
+                      event.currentTarget.src = dp;
+                    }}
+                  />
                   <label className="absolute inset-0 bg-black/50 flex items-center justify-center">
                     <FiCamera />
                     <input type="file" accept="image/*" onChange={handleMobileAvatarChange} className="hidden" />
@@ -4687,7 +4736,7 @@ function Feed() {
               <div className="flex h-full items-center justify-center">
                 {activeChatMedia.mediaType === "video" ? (
                   <video
-                    src={activeChatMedia.media}
+                    src={mediaUrl(activeChatMedia.media)}
                     controls
                     autoPlay
                     playsInline
@@ -4695,7 +4744,7 @@ function Feed() {
                   />
                 ) : (
                   <img
-                    src={activeChatMedia.media}
+                    src={mediaUrl(activeChatMedia.media)}
                     alt="Opened chat media"
                     className="max-h-full max-w-full rounded-md object-contain"
                   />
@@ -4778,9 +4827,12 @@ function Feed() {
             }`}
           >
             <img
-              src={userData?.profileImage || dp}
+              src={mediaUrl(userData?.profileImage) || dp}
               alt="Profile"
               className="w-full h-full object-cover"
+              onError={(event) => {
+                event.currentTarget.src = dp;
+              }}
             />
           </span>
           <span className="text-xs font-semibold">Profile</span>
