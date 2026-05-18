@@ -74,7 +74,7 @@ function SignIn() {
         showToast(data.message || "Invalid credentials", "error");
       }
     } catch {
-      showToast("Cannot reach backend. Make sure the server is running on port 8000.", "error");
+      showToast("Cannot reach backend. Please try again.", "error");
     } finally {
       setLoading(false);
     }
