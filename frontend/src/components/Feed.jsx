@@ -242,6 +242,7 @@ function Feed() {
   const [selectedProfileItem, setSelectedProfileItem] = useState(null);
   const [stories, setStories] = useState([]);
   const [selectedStory, setSelectedStory] = useState(null);
+  const [storyMediaError, setStoryMediaError] = useState(false);
   const [storyMenuOpen, setStoryMenuOpen] = useState(false);
   const [storyClock, setStoryClock] = useState(Date.now());
   const [storyViewStartedAt, setStoryViewStartedAt] = useState(0);
@@ -575,6 +576,7 @@ function Feed() {
 
   const closeStoryViewer = useCallback(() => {
     setSelectedStory(null);
+    setStoryMediaError(false);
     setStoryMenuOpen(false);
     setStoryReplyText("");
     setStoryReplyStatus("");
@@ -711,14 +713,26 @@ function Feed() {
     try {
       const res = await fetch(apiUrl("/api/content/stories"), {
         credentials: "include",
+        headers: getTabAuthHeaders(),
       });
 
       if (!res.ok) return;
 
       const data = await res.json();
-      setStories(data.filter((story) => isStoryActive(story)));
+      const activeServerStories = data.filter((story) => isStoryActive(story));
+      const serverStoryIds = new Set(activeServerStories.map((story) => story._id));
+
+      setStories((currentStories) => [
+        ...currentStories.filter(
+          (story) =>
+            story._localUpload &&
+            isStoryActive(story) &&
+            !serverStoryIds.has(story._id)
+        ),
+        ...activeServerStories,
+      ]);
     } catch {
-      setStories([]);
+      // Keep already-loaded stories visible if a refresh briefly fails.
     }
   };
 
@@ -1128,15 +1142,31 @@ function Feed() {
         errorMessage: "Story upload failed",
       });
 
+      const uploadedStory = {
+        ...data,
+        author: data.author || {
+          _id: userData?._id,
+          name: userData?.name,
+          userName: userData?.userName,
+          profileImage: userData?.profileImage,
+        },
+        media: data.media || media,
+        mediaType: data.mediaType || mediaType,
+        viewers: Array.isArray(data.viewers) ? data.viewers : [],
+        createdAt: data.createdAt || new Date().toISOString(),
+        _localUpload: true,
+      };
+
       setStories((currentStories) => [
-        data,
+        uploadedStory,
         ...currentStories.filter(
           (story) =>
-            story._id !== data._id &&
+            story._id !== uploadedStory._id &&
             isStoryActive(story)
         ),
       ]);
-      setSelectedStory(data);
+      setSelectedStory(uploadedStory);
+      setStoryMediaError(false);
       setStoryMenuOpen(false);
       setStoryViewStartedAt(Date.now());
       setStoryViewerClock(Date.now());
@@ -1274,6 +1304,7 @@ function Feed() {
     }
 
     setSelectedStory(story);
+    setStoryMediaError(false);
     setStoryMenuOpen(false);
     setStoryViewStartedAt(Date.now());
     setStoryViewerClock(Date.now());
@@ -1284,6 +1315,7 @@ function Feed() {
       const res = await fetch(apiUrl(`/api/content/stories/${story._id}/view`), {
         method: "POST",
         credentials: "include",
+        headers: getTabAuthHeaders(),
       });
 
       const data = await res.json();
@@ -1421,6 +1453,7 @@ function Feed() {
     );
 
     if (!currentStoryStillVisible) {
+      if (isStoryActive(selectedStory)) return;
       closeStoryViewer();
       return;
     }
@@ -1441,6 +1474,7 @@ function Feed() {
       const res = await fetch(apiUrl(`/api/content/stories/${storyId}`), {
         method: "DELETE",
         credentials: "include",
+        headers: getTabAuthHeaders(),
       });
 
       const data = await res.json();
@@ -1448,6 +1482,7 @@ function Feed() {
 
       setStories((currentStories) => currentStories.filter((item) => item._id !== storyId));
       setSelectedStory(null);
+      setStoryMediaError(false);
       setStoryMenuOpen(false);
       setMessage("Story deleted.");
     } catch (error) {
@@ -4527,13 +4562,28 @@ function Feed() {
                 }
               }}
             >
-              {selectedStory.mediaType === "video" ? (
+              {storyMediaError || !selectedStory.media ? (
+                <div
+                  data-story-media
+                  className="w-full max-h-[calc(100vh-190px)] min-h-[320px] flex flex-col items-center justify-center gap-3 bg-black/30 text-center px-8"
+                >
+                  <FiImage className="text-4xl text-gray-500" />
+                  <div>
+                    <p className="text-sm font-semibold text-white">Story media is not available.</p>
+                    <p className="mt-1 text-xs text-gray-400">
+                      The upload saved, but the hosted media file could not load.
+                    </p>
+                  </div>
+                </div>
+              ) : selectedStory.mediaType === "video" ? (
                 <video
                   src={mediaUrl(selectedStory.media)}
                   controls
                   autoPlay
                   playsInline
                   data-story-media
+                  onLoadedData={() => setStoryMediaError(false)}
+                  onError={() => setStoryMediaError(true)}
                   className="w-full max-h-[calc(100vh-190px)] bg-black object-contain"
                 />
               ) : (
@@ -4541,6 +4591,8 @@ function Feed() {
                   src={mediaUrl(selectedStory.media)}
                   alt="Story"
                   data-story-media
+                  onLoad={() => setStoryMediaError(false)}
+                  onError={() => setStoryMediaError(true)}
                   className="w-full max-h-[calc(100vh-190px)] object-contain"
                 />
               )}
