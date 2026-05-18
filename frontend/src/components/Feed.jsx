@@ -1136,7 +1136,13 @@ function Feed() {
             isStoryActive(story)
         ),
       ]);
-      await fetchStories();
+      setSelectedStory(data);
+      setStoryMenuOpen(false);
+      setStoryViewStartedAt(Date.now());
+      setStoryViewerClock(Date.now());
+      setStoryReplyText("");
+      setStoryReplyStatus("");
+      fetchStories();
       setMessage("Story uploaded.");
     } catch (error) {
       setMessage(error.message || "Story upload failed.");
