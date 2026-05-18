@@ -4,3 +4,8 @@ node_modules
 dist
 build
 node_modules
+backend/.env
+.env
+.env.local
+.env.production
+.env.development
