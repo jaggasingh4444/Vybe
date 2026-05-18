@@ -12,6 +12,9 @@ import connectDb from "./config/db.js";
 
 dotenv.config();
 const app = express();
+app.get("/", (req, res) => {
+  res.send("Vybe backend is running successfully");
+});
 const port = process.env.PORT || 5000;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const allowedOrigins = (process.env.CLIENT_URL || "http://localhost:5173,http://127.0.0.1:5173")
