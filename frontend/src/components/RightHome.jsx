@@ -282,9 +282,12 @@ function RightHome() {
   const followingIds = new Set((userData?.following || []).map((id) => id.toString()));
   const followerIds = new Set((userData?.followers || []).map((id) => id.toString()));
   const isUserOnline = (user) => Boolean(user?.isOnline || onlineUserIds.has(user?._id));
+  const followSuggestionUsers = suggestedUsers.filter(
+    (user) => user?._id && user._id !== userData?._id && !followingIds.has(user._id)
+  );
   const visibleSuggestedUsers = suggestedExpanded
-    ? suggestedUsers
-    : suggestedUsers.slice(0, SUGGESTED_PREVIEW_LIMIT);
+    ? followSuggestionUsers
+    : followSuggestionUsers.slice(0, SUGGESTED_PREVIEW_LIMIT);
   const selectedChatTyping = Boolean(selectedChat?._id && typingUserIds.has(selectedChat._id));
 
   useEffect(() => {
@@ -1162,13 +1165,12 @@ function RightHome() {
     <aside className="hidden lg:flex lg:w-[300px] xl:w-[360px] shrink-0 h-screen sticky top-0 bg-black flex-col px-5 py-6 border-l border-gray-900 overflow-hidden">
       <div className="flex items-center justify-between mb-4 shrink-0">
         <h2 className="text-white font-semibold">Suggested</h2>
-        <span className="text-gray-500 text-sm">{suggestedUsers.length}</span>
+        <span className="text-gray-500 text-sm">{followSuggestionUsers.length}</span>
       </div>
 
       <div className="flex shrink-0 flex-col gap-3">
         {visibleSuggestedUsers.length > 0 ? (
           visibleSuggestedUsers.map((user) => {
-            const isFollowing = followingIds.has(user._id);
             const followsMe = followerIds.has(user._id);
 
             return (
@@ -1206,17 +1208,13 @@ function RightHome() {
                 <button
                   onClick={() => handleFollow(user)}
                   disabled={busyUserId === user._id}
-                  className={`text-sm font-semibold hover:text-blue-400 disabled:opacity-60 ${
-                    isFollowing ? "text-gray-400" : "text-blue-500"
-                  }`}
+                  className="text-sm font-semibold text-blue-500 hover:text-blue-400 disabled:opacity-60"
                 >
                   {busyUserId === user._id
                     ? "..."
-                    : isFollowing
-                      ? "Following"
-                      : followsMe
-                        ? "Follow Back"
-                        : "Follow"}
+                    : followsMe
+                      ? "Follow Back"
+                      : "Follow"}
                 </button>
               </div>
             );
@@ -1225,13 +1223,13 @@ function RightHome() {
           <p className="text-gray-500 text-sm">No suggestions yet.</p>
         )}
 
-        {suggestedUsers.length > SUGGESTED_PREVIEW_LIMIT ? (
+        {followSuggestionUsers.length > SUGGESTED_PREVIEW_LIMIT ? (
           <button
             type="button"
             onClick={() => setSuggestedExpanded((expanded) => !expanded)}
             className="self-start text-sm font-semibold text-blue-500 hover:text-blue-400"
           >
-            {suggestedExpanded ? "View less" : `Show more (${suggestedUsers.length - SUGGESTED_PREVIEW_LIMIT})`}
+            {suggestedExpanded ? "View less" : `Show more (${followSuggestionUsers.length - SUGGESTED_PREVIEW_LIMIT})`}
           </button>
         ) : null}
       </div>
