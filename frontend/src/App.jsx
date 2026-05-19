@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 
@@ -10,6 +10,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 
 import useGetCurrentUser from "./hooks/getCurrentUser";
 import useGetSuggestedUsers from "./hooks/getSuggestedUsers";
+import { applyTheme, getStoredTheme } from "./utils/theme";
 
 function App() {
   // 🔥 Runs once on refresh, restores auth from cookie
@@ -19,6 +20,17 @@ function App() {
 
   // 🔥 Always call (but internally guarded)
   useGetSuggestedUsers(userData);
+
+  useEffect(() => {
+    if (!isAuthChecked) return;
+
+    if (userData) {
+      applyTheme(getStoredTheme(), true);
+      return;
+    }
+
+    applyTheme("dark", false);
+  }, [isAuthChecked, userData]);
 
   // ⏳ Wait until auth check finishes
   if (loadingUser || !isAuthChecked) {

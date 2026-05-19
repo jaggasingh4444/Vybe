@@ -6,117 +6,117 @@ body {
 }
 
 html.vybe-light,
-body.vybe-light {
+body.vybe-theme-active.vybe-light {
   background: #f4f6fb;
   color: #111827;
 }
 
-body.vybe-light .bg-black {
+body.vybe-theme-active.vybe-light .bg-black {
   background-color: #f4f6fb !important;
 }
 
-body.vybe-light [class~="bg-black/95"] {
+body.vybe-theme-active.vybe-light [class~="bg-black/95"] {
   background-color: rgba(244, 246, 251, 0.96) !important;
 }
 
-body.vybe-light [class~="bg-black/90"],
-body.vybe-light [class~="bg-black/80"],
-body.vybe-light [class~="bg-black/70"],
-body.vybe-light [class~="bg-black/60"],
-body.vybe-light [class~="bg-black/50"],
-body.vybe-light [class~="bg-black/30"],
-body.vybe-light [class~="bg-black/20"] {
+body.vybe-theme-active.vybe-light [class~="bg-black/90"],
+body.vybe-theme-active.vybe-light [class~="bg-black/80"],
+body.vybe-theme-active.vybe-light [class~="bg-black/70"],
+body.vybe-theme-active.vybe-light [class~="bg-black/60"],
+body.vybe-theme-active.vybe-light [class~="bg-black/50"],
+body.vybe-theme-active.vybe-light [class~="bg-black/30"],
+body.vybe-theme-active.vybe-light [class~="bg-black/20"] {
   background-color: rgba(244, 246, 251, 0.84) !important;
 }
 
-body.vybe-light [class~="bg-[#050505]"],
-body.vybe-light [class~="bg-[#080808]"] {
+body.vybe-theme-active.vybe-light [class~="bg-[#050505]"],
+body.vybe-theme-active.vybe-light [class~="bg-[#080808]"] {
   background-color: #ffffff !important;
 }
 
-body.vybe-light [class~="bg-[#101010]"],
-body.vybe-light [class~="bg-[#111]"],
-body.vybe-light [class~="bg-[#151515]"],
-body.vybe-light [class~="bg-[#171717]"],
-body.vybe-light [class~="bg-[#181818]"],
-body.vybe-light [class~="bg-[#191919]"] {
+body.vybe-theme-active.vybe-light [class~="bg-[#101010]"],
+body.vybe-theme-active.vybe-light [class~="bg-[#111]"],
+body.vybe-theme-active.vybe-light [class~="bg-[#151515]"],
+body.vybe-theme-active.vybe-light [class~="bg-[#171717]"],
+body.vybe-theme-active.vybe-light [class~="bg-[#181818]"],
+body.vybe-theme-active.vybe-light [class~="bg-[#191919]"] {
   background-color: #f3f6fb !important;
 }
 
-body.vybe-light .border-gray-900,
-body.vybe-light .border-gray-800,
-body.vybe-light .border-gray-700 {
+body.vybe-theme-active.vybe-light .border-gray-900,
+body.vybe-theme-active.vybe-light .border-gray-800,
+body.vybe-theme-active.vybe-light .border-gray-700 {
   border-color: #d8e0ec !important;
 }
 
-body.vybe-light .text-white,
-body.vybe-light .text-gray-100,
-body.vybe-light .text-gray-200,
-body.vybe-light .text-gray-300,
-body.vybe-light .text-gray-400 {
+body.vybe-theme-active.vybe-light .text-white,
+body.vybe-theme-active.vybe-light .text-gray-100,
+body.vybe-theme-active.vybe-light .text-gray-200,
+body.vybe-theme-active.vybe-light .text-gray-300,
+body.vybe-theme-active.vybe-light .text-gray-400 {
   color: #111827 !important;
 }
 
-body.vybe-light .text-gray-500,
-body.vybe-light .text-gray-600 {
+body.vybe-theme-active.vybe-light .text-gray-500,
+body.vybe-theme-active.vybe-light .text-gray-600 {
   color: #6b7280 !important;
 }
 
-body.vybe-light [class~="text-white/80"],
-body.vybe-light [class~="text-white/70"],
-body.vybe-light [class~="text-white/60"] {
+body.vybe-theme-active.vybe-light [class~="text-white/80"],
+body.vybe-theme-active.vybe-light [class~="text-white/70"],
+body.vybe-theme-active.vybe-light [class~="text-white/60"] {
   color: rgba(17, 24, 39, 0.72) !important;
 }
 
-body.vybe-light .bg-blue-600,
-body.vybe-light .bg-red-600,
-body.vybe-light .bg-green-500 {
+body.vybe-theme-active.vybe-light .bg-blue-600,
+body.vybe-theme-active.vybe-light .bg-red-600,
+body.vybe-theme-active.vybe-light .bg-green-500 {
   color: #ffffff !important;
 }
 
-body.vybe-light .bg-blue-600 .text-white,
-body.vybe-light .bg-red-600 .text-white,
-body.vybe-light .bg-green-500 .text-white {
+body.vybe-theme-active.vybe-light .bg-blue-600 .text-white,
+body.vybe-theme-active.vybe-light .bg-red-600 .text-white,
+body.vybe-theme-active.vybe-light .bg-green-500 .text-white {
   color: #ffffff !important;
 }
 
-body.vybe-light .bg-blue-600 [class~="text-white/80"],
-body.vybe-light .bg-blue-600 [class~="text-white/70"],
-body.vybe-light .bg-blue-600 [class~="text-white/60"],
-body.vybe-light .bg-red-600 [class~="text-white/80"],
-body.vybe-light .bg-red-600 [class~="text-white/70"],
-body.vybe-light .bg-red-600 [class~="text-white/60"] {
+body.vybe-theme-active.vybe-light .bg-blue-600 [class~="text-white/80"],
+body.vybe-theme-active.vybe-light .bg-blue-600 [class~="text-white/70"],
+body.vybe-theme-active.vybe-light .bg-blue-600 [class~="text-white/60"],
+body.vybe-theme-active.vybe-light .bg-red-600 [class~="text-white/80"],
+body.vybe-theme-active.vybe-light .bg-red-600 [class~="text-white/70"],
+body.vybe-theme-active.vybe-light .bg-red-600 [class~="text-white/60"] {
   color: rgba(255, 255, 255, 0.78) !important;
 }
 
-body.vybe-light .text-sky-300 {
+body.vybe-theme-active.vybe-light .text-sky-300 {
   color: #38bdf8 !important;
 }
 
-body.vybe-light .bg-white {
+body.vybe-theme-active.vybe-light .bg-white {
   background-color: #111827 !important;
 }
 
-body.vybe-light .text-black {
+body.vybe-theme-active.vybe-light .text-black {
   color: #ffffff !important;
 }
 
-body.vybe-light input,
-body.vybe-light textarea {
+body.vybe-theme-active.vybe-light input,
+body.vybe-theme-active.vybe-light textarea {
   color: #111827;
 }
 
-body.vybe-light input::placeholder,
-body.vybe-light textarea::placeholder {
+body.vybe-theme-active.vybe-light input::placeholder,
+body.vybe-theme-active.vybe-light textarea::placeholder {
   color: #9ca3af !important;
 }
 
-body.vybe-light img[alt="logo"] {
+body.vybe-theme-active.vybe-light img[alt="logo"] {
   filter: invert(1);
 }
 
-body.vybe-light video,
-body.vybe-light img {
+body.vybe-theme-active.vybe-light video,
+body.vybe-theme-active.vybe-light img {
   background-color: transparent;
 }
 

@@ -9,14 +9,15 @@ export const getStoredTheme = () => {
   return normalizeTheme(window.localStorage.getItem(THEME_STORAGE_KEY));
 };
 
-export const applyTheme = (theme) => {
+export const applyTheme = (theme, active = true) => {
   if (typeof document === "undefined") return;
 
   const normalizedTheme = normalizeTheme(theme);
-  const isLight = normalizedTheme === "light";
+  const isLight = active && normalizedTheme === "light";
 
   document.documentElement.classList.toggle("vybe-light", isLight);
   document.body.classList.toggle("vybe-light", isLight);
+  document.body.classList.toggle("vybe-theme-active", Boolean(active));
   document.documentElement.style.colorScheme = isLight ? "light" : "dark";
 };
 
