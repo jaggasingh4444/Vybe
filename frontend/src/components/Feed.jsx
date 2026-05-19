@@ -3264,7 +3264,7 @@ function Feed() {
       ref={feedRootRef}
       data-vybe-feed-root
       style={mobileChatViewportStyle}
-      className={`w-full lg:flex-1 lg:max-w-[900px] xl:max-w-[980px] bg-black relative border-x border-gray-900 ${
+      className={`w-full lg:flex-1 lg:max-w-[840px] xl:max-w-[900px] bg-black relative border-x border-gray-900 ${
         isMobileChatTab ? "pb-0" : "pb-20"
       } lg:pb-0 ${
         isMobileChatTab
@@ -3671,7 +3671,7 @@ function Feed() {
 
       <div
         style={mobileChatContentStyle}
-        className={`w-full max-w-[720px] xl:max-w-[780px] mx-auto flex flex-col ${
+        className={`w-full max-w-[660px] xl:max-w-[700px] mx-auto flex flex-col ${
           isMobileReelFeed
             ? "px-0 py-0 gap-0"
             : isMobileChatTab
