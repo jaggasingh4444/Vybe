@@ -5,6 +5,21 @@ body {
   background: #000;
 }
 
+button:not(:disabled),
+a,
+[role="button"],
+summary,
+label[for],
+select,
+input[type="file"]::file-selector-button {
+  cursor: pointer;
+}
+
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
 body.vybe-theme-active.vybe-light {
   background: #f4f6fb;
   color: #111827;
