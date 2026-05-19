@@ -22,6 +22,7 @@ const CAPTION_LIMIT = 500;
 const TYPING_IDLE_MS = 1400;
 const TYPING_REFRESH_MS = 2000;
 const TYPING_VISIBLE_MS = 3000;
+const CONTENT_MEDIA_UPLOAD_TIMEOUT_MS = 120000;
 const formatUnreadCount = (count) => (count > 10 ? "10+" : count);
 const shouldAutoDismissStatus = (status) => /\b(uploaded|deleted)\b/i.test(status || "");
 const getContentKey = (item) => (item?._id && item?.type ? `${item.type}-${item._id}` : "");
@@ -298,6 +299,58 @@ const uploadJsonWithProgress = ({ url, payload, onProgress, errorMessage = "Uplo
     xhr.send(JSON.stringify(payload));
   });
 
+const uploadContentMedia = (file, onProgress) =>
+  new Promise((resolve, reject) => {
+    if (!file) {
+      resolve(null);
+      return;
+    }
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", apiUrl("/api/content/uploads"), true);
+    xhr.withCredentials = true;
+    xhr.timeout = CONTENT_MEDIA_UPLOAD_TIMEOUT_MS;
+
+    getTabAuthHeaders({
+      "Content-Type": file.type || "application/octet-stream",
+    }).forEach((value, key) => {
+      xhr.setRequestHeader(key, value);
+    });
+
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable) return;
+
+      const progress = Math.max(1, Math.min(100, Math.round((event.loaded / event.total) * 100)));
+      onProgress?.(progress);
+    };
+
+    xhr.onload = () => {
+      let data = {};
+
+      try {
+        data = xhr.responseText ? JSON.parse(xhr.responseText) : {};
+      } catch {
+        data = {};
+      }
+
+      if (xhr.status < 200 || xhr.status >= 300) {
+        reject(new Error(data.message || "Media upload failed"));
+        return;
+      }
+
+      onProgress?.(100);
+      resolve({
+        media: data.media,
+        mediaType: data.mediaType || (file.type.startsWith("video/") ? "video" : "image"),
+      });
+    };
+
+    xhr.onerror = () => reject(new Error("Media upload failed"));
+    xhr.ontimeout = () => reject(new Error("Media upload is taking too long"));
+    xhr.onabort = () => reject(new Error("Media upload cancelled"));
+    xhr.send(file);
+  });
+
 const uploadChatAttachment = (attachment) =>
   new Promise((resolve, reject) => {
     if (!attachment?.file) {
@@ -368,6 +421,7 @@ function Feed() {
   const [profileContentType, setProfileContentType] = useState("all");
   const [profileBusy, setProfileBusy] = useState(false);
   const [selectedProfileItem, setSelectedProfileItem] = useState(null);
+  const [profileItemMenuOpen, setProfileItemMenuOpen] = useState(false);
   const [stories, setStories] = useState([]);
   const [selectedStory, setSelectedStory] = useState(null);
   const [storyMediaError, setStoryMediaError] = useState(false);
@@ -1230,6 +1284,10 @@ function Feed() {
     setMobileConversationMenuOpen(false);
   }, [selectedMobileChat?._id]);
 
+  useEffect(() => {
+    setProfileItemMenuOpen(false);
+  }, [selectedProfileItem?._id, selectedProfileItem?.type]);
+
   const clearSelectedFile = () => {
     if (preview) URL.revokeObjectURL(preview);
     setSelectedFile(null);
@@ -1680,21 +1738,30 @@ function Feed() {
     setUploadProgress(4);
 
     try {
-      const media = selectedFile ? await readFileAsDataUrl(selectedFile) : "";
       const uploadMode = selectedFile && selectedMediaType === "video" ? "reel" : "post";
       const endpoint = uploadMode === "reel" ? "/api/content/reels" : "/api/content/posts";
+      const uploadedMedia = selectedFile
+        ? await uploadContentMedia(selectedFile, (progress) => {
+            setUploadProgress(Math.max(6, Math.min(92, Math.round(progress * 0.9))));
+          })
+        : null;
       const payload =
         uploadMode === "reel"
-          ? { caption: trimmedCaption, media }
+          ? { caption: trimmedCaption, media: uploadedMedia?.media, mediaType: "video" }
           : selectedFile
-            ? { caption: trimmedCaption, media, mediaType: selectedMediaType }
+            ? { caption: trimmedCaption, media: uploadedMedia?.media, mediaType: uploadedMedia?.mediaType || selectedMediaType }
             : { caption: trimmedCaption };
-      setUploadProgress(8);
+      setUploadProgress(selectedFile ? 92 : 8);
 
       const data = await uploadJsonWithProgress({
         url: apiUrl(endpoint),
         payload,
-        onProgress: (progress) => setUploadProgress(Math.max(8, progress)),
+        onProgress: (progress) =>
+          setUploadProgress(
+            selectedFile
+              ? Math.max(92, Math.min(100, 92 + Math.round(progress * 0.08)))
+              : Math.max(8, progress)
+          ),
         errorMessage: "Upload failed",
       });
 
@@ -2023,6 +2090,7 @@ function Feed() {
       const res = await fetch(apiUrl(`/api/content/${item.type}/${item._id}`), {
         method: "DELETE",
         credentials: "include",
+        headers: getTabAuthHeaders(),
       });
 
       const data = await res.json();
@@ -2611,6 +2679,9 @@ function Feed() {
   const profilePostCount = activeProfileContent.filter((item) => item.type === "post").length;
   const profileReelCount = activeProfileContent.filter((item) => item.type === "reel").length;
   const viewingOwnProfile = activeProfileUser?._id === userData?._id;
+  const selectedProfileItemKey = getContentKey(selectedProfileItem);
+  const selectedProfileItemIsOwn = isSameId(selectedProfileItem?.author?._id, userData?._id);
+  const selectedProfileItemDeletePending = pendingContentDeleteIds.has(selectedProfileItemKey);
   const profileIsFollowing = activeProfileUser?._id
     ? mobileFollowingIds.has(activeProfileUser._id)
     : false;
@@ -4618,14 +4689,45 @@ function Feed() {
                 </div>
               </button>
 
-              <button
-                type="button"
-                onClick={() => setSelectedProfileItem(null)}
-                className="w-9 h-9 rounded-full bg-[#111] text-gray-300 flex items-center justify-center"
-                aria-label="Close profile media"
-              >
-                <FiX />
-              </button>
+              <div className="relative flex items-center gap-2">
+                {selectedProfileItemIsOwn ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setProfileItemMenuOpen((open) => !open)}
+                      className="w-9 h-9 rounded-full bg-[#111] text-gray-300 hover:text-white flex items-center justify-center"
+                      aria-label="Profile media options"
+                      aria-expanded={profileItemMenuOpen}
+                    >
+                      <FiMoreVertical />
+                    </button>
+                    {profileItemMenuOpen ? (
+                      <div className="absolute right-11 top-10 z-20 w-48 overflow-hidden rounded-lg border border-gray-800 bg-[#080808] shadow-2xl">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProfileItemMenuOpen(false);
+                            handleDeleteContent(selectedProfileItem);
+                          }}
+                          disabled={selectedProfileItemDeletePending}
+                          className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-red-400 hover:bg-[#141414] disabled:opacity-50"
+                        >
+                          <FiTrash2 />
+                          {selectedProfileItemDeletePending ? "Deleting..." : `Delete ${selectedProfileItem.type === "reel" ? "reel" : "post"}`}
+                        </button>
+                      </div>
+                    ) : null}
+                  </>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => setSelectedProfileItem(null)}
+                  className="w-9 h-9 rounded-full bg-[#111] text-gray-300 flex items-center justify-center"
+                  aria-label="Close profile media"
+                >
+                  <FiX />
+                </button>
+              </div>
             </div>
 
             <div className="bg-black flex items-center justify-center">

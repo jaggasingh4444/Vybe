@@ -3,7 +3,7 @@ import Notification from "../models/notification.model.js";
 import Post from "../models/post.model.js";
 import Story from "../models/story.model.js";
 import User from "../models/user.model.js";
-import { isDataUrl, saveDataUrlMedia } from "../utils/mediaStorage.js";
+import { isDataUrl, isStoredMediaUrl, saveBinaryMedia, saveDataUrlMedia } from "../utils/mediaStorage.js";
 
 const contentClients = new Map();
 const notificationClients = new Map();
@@ -394,11 +394,13 @@ export const createPost = async (req, res) => {
       return res.status(400).json({ message: "Post media must be an image or video" });
     }
 
-    if (hasMedia && !isDataUrl(media)) {
+    if (hasMedia && !isDataUrl(media) && !isStoredMediaUrl(media)) {
       return res.status(400).json({ message: "Valid media file is required" });
     }
 
-    const storedMedia = hasMedia ? await saveDataUrlMedia(media, "content", req) : "";
+    const storedMedia = hasMedia && isDataUrl(media)
+      ? await saveDataUrlMedia(media, "content", req)
+      : media || "";
     const post = await Post.create({
       author: req.userId,
       mediaType: hasMedia ? mediaType : "text",
@@ -419,13 +421,13 @@ export const createPost = async (req, res) => {
 
 export const createReel = async (req, res) => {
   try {
-    const { caption = "", media } = req.body;
+    const { caption = "", media, mediaType = "video" } = req.body;
 
-    if (!isDataUrl(media) || !media.startsWith("data:video/")) {
+    if (mediaType !== "video" || (!isStoredMediaUrl(media) && (!isDataUrl(media) || !media.startsWith("data:video/")))) {
       return res.status(400).json({ message: "Reel upload must be a video file" });
     }
 
-    const storedMedia = await saveDataUrlMedia(media, "content", req);
+    const storedMedia = isDataUrl(media) ? await saveDataUrlMedia(media, "content", req) : media;
     const reel = await Loop.create({
       author: req.userId,
       mediaType: "video",
@@ -441,6 +443,34 @@ export const createReel = async (req, res) => {
     return res.status(201).json(serializeContent(populatedReel, "reel"));
   } catch (error) {
     return res.status(500).json({ message: `create reel error ${error.message}` });
+  }
+};
+
+export const uploadContentMedia = async (req, res) => {
+  try {
+    const contentType = req.get("content-type")?.split(";")[0]?.trim() || "";
+    const mediaType = contentType.startsWith("video/")
+      ? "video"
+      : contentType.startsWith("image/")
+        ? "image"
+        : "";
+
+    if (!mediaType) {
+      return res.status(400).json({ message: "Upload must be an image or video" });
+    }
+
+    if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+      return res.status(400).json({ message: "Media file is empty" });
+    }
+
+    const media = await saveBinaryMedia(req.body, contentType, "content", req);
+    if (!media) {
+      return res.status(400).json({ message: "Media upload failed" });
+    }
+
+    return res.status(201).json({ media, mediaType });
+  } catch (error) {
+    return res.status(500).json({ message: `content upload error ${error.message}` });
   }
 };
 

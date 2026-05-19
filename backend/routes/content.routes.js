@@ -6,6 +6,7 @@ import {
   deleteStory,
   createPost,
   createReel,
+  uploadContentMedia,
   addComment,
   addCommentReply,
   getFeed,
@@ -27,6 +28,12 @@ contentRouter.get("/stories", isAuth, getStories);
 contentRouter.get("/notifications", isAuth, getNotifications);
 contentRouter.get("/notifications/events", isAuth, notificationEvents);
 contentRouter.patch("/notifications/read", isAuth, markNotificationsRead);
+contentRouter.post(
+  "/uploads",
+  isAuth,
+  express.raw({ type: ["image/*", "video/*", "application/octet-stream"], limit: "80mb" }),
+  uploadContentMedia
+);
 contentRouter.post("/posts", isAuth, createPost);
 contentRouter.post("/reels", isAuth, createReel);
 contentRouter.post("/stories", isAuth, createStory);
