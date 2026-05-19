@@ -12,6 +12,7 @@ const ONE_MB = 1024 * 1024;
 const MAX_IMAGE_SIZE = 10 * ONE_MB;
 const MAX_VIDEO_SIZE = 45 * ONE_MB;
 const MESSAGE_TIMEOUT_MS = 12000;
+const CHAT_MEDIA_UPLOAD_TIMEOUT_MS = 120000;
 const EMOJI_OPTIONS = ["😀", "😂", "😍", "🔥", "❤️", "🙌", "👏", "😎", "🥹", "👍", "✨", "💯"];
 const REACTION_OPTIONS = ["❤️", "😂", "🔥", "👏", "😮", "😢", "👍"];
 const STORY_EXPIRY_MS = 24 * 60 * 60 * 1000;
@@ -295,6 +296,50 @@ const uploadJsonWithProgress = ({ url, payload, onProgress, errorMessage = "Uplo
     xhr.onerror = () => reject(new Error(errorMessage));
     xhr.onabort = () => reject(new Error("Upload cancelled."));
     xhr.send(JSON.stringify(payload));
+  });
+
+const uploadChatAttachment = (attachment) =>
+  new Promise((resolve, reject) => {
+    if (!attachment?.file) {
+      resolve({ media: attachment.media, mediaType: attachment.mediaType });
+      return;
+    }
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", apiUrl("/api/chat/uploads"), true);
+    xhr.withCredentials = true;
+    xhr.timeout = CHAT_MEDIA_UPLOAD_TIMEOUT_MS;
+
+    getTabAuthHeaders({
+      "Content-Type": attachment.file.type || "application/octet-stream",
+    }).forEach((value, key) => {
+      xhr.setRequestHeader(key, value);
+    });
+
+    xhr.onload = () => {
+      let data = {};
+
+      try {
+        data = xhr.responseText ? JSON.parse(xhr.responseText) : {};
+      } catch {
+        data = {};
+      }
+
+      if (xhr.status < 200 || xhr.status >= 300) {
+        reject(new Error(data.message || "Media upload failed"));
+        return;
+      }
+
+      resolve({
+        media: data.media,
+        mediaType: data.mediaType || attachment.mediaType,
+      });
+    };
+
+    xhr.onerror = () => reject(new Error("Media upload failed"));
+    xhr.ontimeout = () => reject(new Error("Media upload is taking too long"));
+    xhr.onabort = () => reject(new Error("Media upload cancelled"));
+    xhr.send(attachment.file);
   });
 
 function Feed() {
@@ -590,13 +635,12 @@ function Feed() {
     }
 
     try {
-      const mediaItems = await Promise.all(
-        files.map(async (file) => ({
-          media: await readFileAsDataUrl(file),
-          mediaType: file.type.startsWith("video/") ? "video" : "image",
-          name: file.name,
-        }))
-      );
+      const mediaItems = files.map((file) => ({
+        file,
+        media: URL.createObjectURL(file),
+        mediaType: file.type.startsWith("video/") ? "video" : "image",
+        name: file.name,
+      }));
       setMobileChatEmojiOpen(false);
       setMobileMessageMedia((current) => [...current, ...mediaItems]);
     } catch {
@@ -2352,6 +2396,14 @@ function Feed() {
     stopMobileOutgoingTyping(receiver._id);
 
     try {
+      if (mediaPayload.length > 0) {
+        setMobileChatStatus("Uploading media...");
+      }
+
+      const uploadedAttachments = await Promise.all(
+        mediaPayload.map((attachment) => uploadChatAttachment(attachment))
+      );
+
       const { res, data } = await fetchJsonWithTimeout(
         apiUrl(`/api/chat/${receiver._id}/messages`),
         {
@@ -2361,7 +2413,7 @@ function Feed() {
           body: JSON.stringify({
             text,
             clientId,
-            attachments: mediaPayload.map(({ media, mediaType }) => ({ media, mediaType })),
+            attachments: uploadedAttachments,
             replyToMessageId: replyTarget?._id,
           }),
         },
@@ -2372,6 +2424,7 @@ function Feed() {
 
       saveConfirmedMobileMessage(data, tempId);
       setMobileChatEmojiOpen(false);
+      setMobileChatStatus("");
       fetchMobileChatUsers();
     } catch (error) {
       markMobileMessageFailed(tempId);

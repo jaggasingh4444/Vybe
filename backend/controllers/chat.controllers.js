@@ -3,7 +3,7 @@ import Message from "../models/message.model.js";
 import User from "../models/user.model.js";
 import Post from "../models/post.model.js";
 import Loop from "../models/loop.model.js";
-import { isDataUrl, saveDataUrlMedia } from "../utils/mediaStorage.js";
+import { isDataUrl, isStoredMediaUrl, saveBinaryMedia, saveDataUrlMedia } from "../utils/mediaStorage.js";
 
 const chatClients = new Map();
 
@@ -47,7 +47,7 @@ const normalizeChatAttachments = (body) => {
       throw error;
     }
 
-    if (!isDataUrl(attachment.media)) {
+    if (!isDataUrl(attachment.media) && !isStoredMediaUrl(attachment.media)) {
       const error = new Error("Valid chat media is required");
       error.status = 400;
       throw error;
@@ -450,7 +450,9 @@ export const sendMessage = async (req, res) => {
     const storedAttachments = await Promise.all(
       attachments.map(async (attachment) => ({
         mediaType: attachment.mediaType,
-        media: await saveDataUrlMedia(attachment.media, "chat", req),
+        media: isDataUrl(attachment.media)
+          ? await saveDataUrlMedia(attachment.media, "chat", req)
+          : attachment.media,
       }))
     );
 
@@ -482,6 +484,34 @@ export const sendMessage = async (req, res) => {
       return res.status(error.status).json({ message: error.message });
     }
     return res.status(500).json({ message: `send message error ${error.message}` });
+  }
+};
+
+export const uploadChatMedia = async (req, res) => {
+  try {
+    const contentType = req.get("content-type")?.split(";")[0]?.trim() || "";
+    const mediaType = contentType.startsWith("video/")
+      ? "video"
+      : contentType.startsWith("image/")
+        ? "image"
+        : "";
+
+    if (!mediaType) {
+      return res.status(400).json({ message: "Chat upload must be an image or video" });
+    }
+
+    if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+      return res.status(400).json({ message: "Chat media is empty" });
+    }
+
+    const media = await saveBinaryMedia(req.body, contentType, "chat", req);
+    if (!media) {
+      return res.status(400).json({ message: "Chat media upload failed" });
+    }
+
+    return res.status(201).json({ media, mediaType });
+  } catch (error) {
+    return res.status(500).json({ message: `chat upload error ${error.message}` });
   }
 };
 

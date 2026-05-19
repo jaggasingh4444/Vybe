@@ -7,8 +7,11 @@ import { FiChevronLeft, FiChevronRight, FiDownload, FiImage, FiMessageCircle, Fi
 import { getTabAuthHeaders, withTabAuth } from "../utils/tabAuth";
 import { downloadMediaFile } from "../utils/mediaDownload";
 
+const ONE_MB = 1024 * 1024;
+const MAX_IMAGE_SIZE = 10 * ONE_MB;
+const MAX_VIDEO_SIZE = 45 * ONE_MB;
 const MESSAGE_TIMEOUT_MS = 12000;
-const MAX_CHAT_MEDIA_SIZE = 10 * 1024 * 1024;
+const CHAT_MEDIA_UPLOAD_TIMEOUT_MS = 120000;
 const SUGGESTED_PREVIEW_LIMIT = 3;
 const EMOJI_OPTIONS = ["😀", "😂", "😍", "🔥", "❤️", "🙌", "👏", "😎", "🥹", "👍", "✨", "💯"];
 const REACTION_OPTIONS = ["❤️", "😂", "🔥", "👏", "😮", "😢", "👍"];
@@ -18,6 +21,9 @@ const TYPING_REFRESH_MS = 2000;
 const TYPING_VISIBLE_MS = 3000;
 const formatUnreadCount = (count) => (count > 10 ? "10+" : count);
 const shouldAutoDismissStatus = (status) => /\b(uploaded|deleted)\b/i.test(status || "");
+const getMediaSizeLimit = (file) =>
+  file?.type?.startsWith("video/") ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
+const formatMediaSize = (bytes) => `${Math.round(bytes / ONE_MB)} MB`;
 const sharedContentToFeedItem = (sharedContent) => {
   if (!sharedContent?.contentId) return null;
 
@@ -145,14 +151,6 @@ const createMessageReplySnapshot = (message) => ({
   createdAt: message?.createdAt,
 });
 
-const readFileAsDataUrl = (file) =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-
 const fetchJsonWithTimeout = async (url, options = {}, timeoutMessage = "Request timed out.") => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), MESSAGE_TIMEOUT_MS);
@@ -173,6 +171,50 @@ const fetchJsonWithTimeout = async (url, options = {}, timeoutMessage = "Request
     clearTimeout(timeoutId);
   }
 };
+
+const uploadChatAttachment = (attachment) =>
+  new Promise((resolve, reject) => {
+    if (!attachment?.file) {
+      resolve({ media: attachment.media, mediaType: attachment.mediaType });
+      return;
+    }
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", apiUrl("/api/chat/uploads"), true);
+    xhr.withCredentials = true;
+    xhr.timeout = CHAT_MEDIA_UPLOAD_TIMEOUT_MS;
+
+    getTabAuthHeaders({
+      "Content-Type": attachment.file.type || "application/octet-stream",
+    }).forEach((value, key) => {
+      xhr.setRequestHeader(key, value);
+    });
+
+    xhr.onload = () => {
+      let data = {};
+
+      try {
+        data = xhr.responseText ? JSON.parse(xhr.responseText) : {};
+      } catch {
+        data = {};
+      }
+
+      if (xhr.status < 200 || xhr.status >= 300) {
+        reject(new Error(data.message || "Media upload failed"));
+        return;
+      }
+
+      resolve({
+        media: data.media,
+        mediaType: data.mediaType || attachment.mediaType,
+      });
+    };
+
+    xhr.onerror = () => reject(new Error("Media upload failed"));
+    xhr.ontimeout = () => reject(new Error("Media upload is taking too long"));
+    xhr.onabort = () => reject(new Error("Media upload cancelled"));
+    xhr.send(attachment.file);
+  });
 
 function RightHome() {
   const { suggestedUsers, userData } = useSelector((state) => state.user);
@@ -351,8 +393,11 @@ function RightHome() {
       return;
     }
 
-    if (files.some((file) => file.size > MAX_CHAT_MEDIA_SIZE)) {
-      setStatus("Each chat media must be under 10 MB.");
+    const oversizedFile = files.find((file) => file.size > getMediaSizeLimit(file));
+    if (oversizedFile) {
+      setStatus(
+        `Each ${oversizedFile.type.startsWith("video/") ? "video" : "image"} must be under ${formatMediaSize(getMediaSizeLimit(oversizedFile))}.`
+      );
       return;
     }
 
@@ -362,13 +407,12 @@ function RightHome() {
     }
 
     try {
-      const mediaItems = await Promise.all(
-        files.map(async (file) => ({
-          media: await readFileAsDataUrl(file),
-          mediaType: file.type.startsWith("video/") ? "video" : "image",
-          name: file.name,
-        }))
-      );
+      const mediaItems = files.map((file) => ({
+        file,
+        media: URL.createObjectURL(file),
+        mediaType: file.type.startsWith("video/") ? "video" : "image",
+        name: file.name,
+      }));
       setChatEmojiOpen(false);
       setMessageMedia((current) => [...current, ...mediaItems]);
     } catch {
@@ -772,6 +816,14 @@ function RightHome() {
     stopOutgoingTyping(receiver._id);
 
     try {
+      if (mediaPayload.length > 0) {
+        setStatus("Uploading media...");
+      }
+
+      const uploadedAttachments = await Promise.all(
+        mediaPayload.map((attachment) => uploadChatAttachment(attachment))
+      );
+
       const { res, data } = await fetchJsonWithTimeout(
         apiUrl(`/api/chat/${receiver._id}/messages`),
         {
@@ -781,7 +833,7 @@ function RightHome() {
           body: JSON.stringify({
             text,
             clientId,
-            attachments: mediaPayload.map(({ media, mediaType }) => ({ media, mediaType })),
+            attachments: uploadedAttachments,
             replyToMessageId: replyTarget?._id,
           }),
         },
@@ -792,6 +844,7 @@ function RightHome() {
 
       saveConfirmedMessage(data, tempId);
       setChatEmojiOpen(false);
+      setStatus("");
       fetchChatUsers();
     } catch (error) {
       markMessageFailed(tempId);

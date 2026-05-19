@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const uploadsRoot = path.join(__dirname, "..", "uploads");
 const dataUrlPattern = /^data:(image|video)\/([a-zA-Z0-9.+-]+);base64,(.+)$/;
+const mediaTypePattern = /^(image|video)\/([a-zA-Z0-9.+-]+)$/;
 const databaseDefaultFolders = new Set(["content", "stories", "profiles"]);
 const extensionMap = {
   jpeg: "jpg",
@@ -64,6 +65,27 @@ export const saveDataUrlMedia = async (dataUrl, folder, req) => {
 
   await mkdir(directory, { recursive: true });
   await writeFile(path.join(directory, filename), base64Data, "base64");
+
+  return `${getPublicOrigin(req)}/uploads/${safeFolder}/${filename}`;
+};
+
+export const isStoredMediaUrl = (value) =>
+  typeof value === "string" &&
+  (/^https?:\/\/.+\/uploads\/[^?#]+\/[^?#]+/.test(value) ||
+    value.startsWith("/uploads/"));
+
+export const saveBinaryMedia = async (buffer, mimeType, folder, req) => {
+  const match = typeof mimeType === "string" ? mimeType.match(mediaTypePattern) : null;
+  if (!Buffer.isBuffer(buffer) || buffer.length === 0 || !match) return "";
+
+  const [, , rawExtension] = match;
+  const extension = extensionMap[rawExtension.toLowerCase()] || rawExtension.toLowerCase();
+  const safeFolder = getSafeFolder(folder);
+  const directory = path.join(uploadsRoot, safeFolder);
+  const filename = `${Date.now()}-${crypto.randomUUID()}.${extension}`;
+
+  await mkdir(directory, { recursive: true });
+  await writeFile(path.join(directory, filename), buffer);
 
   return `${getPublicOrigin(req)}/uploads/${safeFolder}/${filename}`;
 };
