@@ -197,6 +197,7 @@ const sendToUser = (userId, payload) => {
   for (const client of [...clients]) {
     try {
       client.write(event);
+      client.flush?.();
     } catch {
       clients.delete(client);
     }
@@ -220,8 +221,9 @@ const broadcastPresence = () => {
 
 export const chatEvents = (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
   res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
   res.flushHeaders?.();
 
   addClient(req.userId, res);
@@ -231,6 +233,7 @@ export const chatEvents = (req, res) => {
       onlineUserIds: getOnlineUserIds(),
     })}\n\n`
   );
+  res.flush?.();
   broadcastPresence();
 
   req.on("close", () => {
@@ -408,6 +411,8 @@ export const sendMessage = async (req, res) => {
     );
     const attachments = normalizeChatAttachments(req.body);
     const text = req.body.text?.trim() || (sharedContent ? `Shared a ${sharedContent.contentType}` : "");
+    const clientId =
+      typeof req.body.clientId === "string" ? req.body.clientId.trim().slice(0, 80) : "";
     const hasMedia = attachments.length > 0;
 
     if (req.userId === receiverId) {
@@ -434,6 +439,7 @@ export const sendMessage = async (req, res) => {
       sender: req.userId,
       receiver: receiverId,
       text,
+      clientId,
       mediaType: storedAttachments[0]?.mediaType,
       media: storedAttachments[0]?.media,
       attachments: storedAttachments,

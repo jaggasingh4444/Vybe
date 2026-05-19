@@ -55,6 +55,74 @@ const getChatMediaTileClass = (count, index) => {
 };
 
 const getMessageSenderId = (message) => message?.sender?._id || message?.sender || "";
+const getMessageReceiverId = (message) => message?.receiver?._id || message?.receiver || "";
+const getMessageClientId = (message) => message?.clientId || "";
+const getMessageReplyId = (message) => message?.replyTo?.messageId || "";
+const isSameId = (left, right) =>
+  Boolean(left && right) && left.toString() === right.toString();
+const hasMatchingPendingMessage = (pendingMessage, confirmedMessage) => {
+  if (!pendingMessage?.pending || !confirmedMessage?._id) return false;
+
+  const pendingClientId = getMessageClientId(pendingMessage);
+  if (pendingClientId && pendingClientId === getMessageClientId(confirmedMessage)) {
+    return true;
+  }
+
+  if (!isSameId(getMessageSenderId(pendingMessage), getMessageSenderId(confirmedMessage))) return false;
+  if (!isSameId(getMessageReceiverId(pendingMessage), getMessageReceiverId(confirmedMessage))) return false;
+  if ((pendingMessage.text || "") !== (confirmedMessage.text || "")) return false;
+  if (getMessageReplyId(pendingMessage) !== getMessageReplyId(confirmedMessage)) return false;
+
+  const pendingAttachments = getMessageAttachments(pendingMessage);
+  const confirmedAttachments = getMessageAttachments(confirmedMessage);
+  if (pendingAttachments.length !== confirmedAttachments.length) return false;
+  if (
+    pendingAttachments.some(
+      (attachment, index) => attachment.mediaType !== confirmedAttachments[index]?.mediaType
+    )
+  ) {
+    return false;
+  }
+
+  const pendingTime = new Date(pendingMessage.createdAt || 0).getTime();
+  const confirmedTime = new Date(confirmedMessage.createdAt || 0).getTime();
+  if (!Number.isFinite(pendingTime) || !Number.isFinite(confirmedTime)) return true;
+
+  return Math.abs(confirmedTime - pendingTime) < 60 * 1000;
+};
+const mergeMessageIntoList = (messages, message) => {
+  if (!message?._id) return messages;
+
+  let merged = false;
+  const nextMessages = messages.map((currentMessage) => {
+    if (isSameId(currentMessage._id, message._id)) {
+      merged = true;
+      return message;
+    }
+
+    if (!merged && hasMatchingPendingMessage(currentMessage, message)) {
+      merged = true;
+      return message;
+    }
+
+    return currentMessage;
+  });
+
+  return merged ? nextMessages : [...nextMessages, message];
+};
+const mergeServerMessagesIntoList = (currentMessages, serverMessages) => {
+  const serverMessageIds = new Set(serverMessages.map((message) => message._id?.toString()));
+  const pendingMessages = currentMessages.filter(
+    (message) =>
+      message.pending &&
+      !serverMessageIds.has(message._id?.toString()) &&
+      !serverMessages.some((serverMessage) => hasMatchingPendingMessage(message, serverMessage))
+  );
+
+  return [...serverMessages, ...pendingMessages].sort(
+    (left, right) => new Date(left.createdAt || 0) - new Date(right.createdAt || 0)
+  );
+};
 const getReplyPreviewText = (reply) => {
   if (!reply) return "";
   if (reply.text) return reply.text;
@@ -317,10 +385,7 @@ function RightHome() {
   };
 
   const mergeMessage = (message) => {
-    setMessages((current) => {
-      if (current.some((item) => item._id === message._id)) return current;
-      return [...current, message];
-    });
+    setMessages((current) => mergeMessageIntoList(current, message));
   };
 
   const updateMessage = (message) => {
@@ -335,8 +400,7 @@ function RightHome() {
         ? current.filter((item) => item._id !== tempId)
         : current;
 
-      if (withoutTemp.some((item) => item._id === message._id)) return withoutTemp;
-      return [...withoutTemp, message];
+      return mergeMessageIntoList(withoutTemp, message);
     });
   };
 
@@ -388,7 +452,7 @@ function RightHome() {
       if (!res.ok) throw new Error("Failed to load messages");
 
       const data = await res.json();
-      setMessages(data);
+      setMessages((current) => mergeServerMessagesIntoList(current, data));
     } catch {
       setStatus("Unable to load messages.");
     }
@@ -522,10 +586,10 @@ function RightHome() {
           [incoming.sender?._id, incoming.receiver?._id].includes(currentUserId);
 
         if (isOpenChat) {
+          mergeMessage(incoming);
+
           if (incoming.receiver?._id === currentUserId) {
             fetchMessages(selectedId);
-          } else {
-            mergeMessage(incoming);
           }
         }
 
@@ -662,9 +726,11 @@ function RightHome() {
     if ((!text && mediaPayload.length === 0) || !selectedChat) return;
 
     const receiver = selectedChat;
-    const tempId = `temp-${Date.now()}`;
+    const clientId = `client-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const tempId = `temp-${clientId}`;
     const optimisticMessage = {
       _id: tempId,
+      clientId,
       sender: userData,
       receiver,
       text,
@@ -693,6 +759,7 @@ function RightHome() {
           headers: getTabAuthHeaders({ "Content-Type": "application/json" }),
           body: JSON.stringify({
             text,
+            clientId,
             attachments: mediaPayload.map(({ media, mediaType }) => ({ media, mediaType })),
             replyToMessageId: replyTarget?._id,
           }),

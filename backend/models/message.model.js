@@ -18,6 +18,12 @@ const messageSchema = new mongoose.Schema(
       maxlength: 1000,
       default: "",
     },
+    clientId: {
+      type: String,
+      trim: true,
+      maxlength: 80,
+      default: "",
+    },
     mediaType: {
       type: String,
       enum: ["image", "video"],
