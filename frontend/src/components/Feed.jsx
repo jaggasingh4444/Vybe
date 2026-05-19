@@ -530,6 +530,44 @@ function Feed() {
   const pendingLikeIdsRef = useRef(new Set());
   const pendingCommentIdsRef = useRef(new Set());
   const pendingReplyIdsRef = useRef(new Set());
+
+  const syncMobileChatUserFromMessage = useCallback((message) => {
+    const currentUserId = userData?._id?.toString();
+    if (!currentUserId || !message?._id) return;
+
+    const senderId = getMessageSenderId(message)?.toString();
+    const receiverId = getMessageReceiverId(message)?.toString();
+    const otherUser = senderId === currentUserId ? message.receiver : message.sender;
+    const otherUserId = otherUser?._id?.toString();
+    if (!otherUserId || otherUserId === currentUserId) return;
+
+    const selectedId = selectedMobileChat?._id?.toString();
+    const isIncoming = receiverId === currentUserId;
+    const isOpenChat = selectedId === otherUserId;
+
+    setMobileChatUsers((currentUsers) => {
+      const existing = currentUsers.find((user) => user._id?.toString() === otherUserId);
+      const unreadCount =
+        isIncoming && !isOpenChat
+          ? (existing?.unreadCount || 0) + 1
+          : isOpenChat
+            ? 0
+            : existing?.unreadCount || 0;
+      const nextUser = {
+        ...existing,
+        ...otherUser,
+        _id: otherUserId,
+        profileImage: otherUser.profileImage || existing?.profileImage || "",
+        unreadCount,
+        isOnline: existing?.isOnline || onlineUserIds.has(otherUserId),
+      };
+
+      return [
+        nextUser,
+        ...currentUsers.filter((user) => user._id?.toString() !== otherUserId),
+      ];
+    });
+  }, [onlineUserIds, selectedMobileChat?._id, userData?._id]);
   const pendingContentDeleteIdsRef = useRef(new Set());
   const pendingCommentDeleteIdsRef = useRef(new Set());
   const mobileMessagesRef = useRef([]);
@@ -1249,6 +1287,7 @@ function Feed() {
 
         const incoming = data.message;
         setMobileTypingIndicator(incoming.sender?._id, false);
+        syncMobileChatUserFromMessage(incoming);
 
         const selectedId = selectedMobileChat?._id;
         const currentUserId = userData?._id;
@@ -1273,11 +1312,11 @@ function Feed() {
     };
 
     events.onerror = () => {
-      events.close();
+      fetchMobileChatUsers();
     };
 
     return () => events.close();
-  }, [isMobile, selectedMobileChat?._id, setMobileTypingIndicator, userData?._id]);
+  }, [isMobile, selectedMobileChat?._id, setMobileTypingIndicator, syncMobileChatUserFromMessage, userData?._id]);
 
   useEffect(() => {
     if (!isMobile || activeMobileTab !== "chat" || !selectedMobileChat?._id) return undefined;

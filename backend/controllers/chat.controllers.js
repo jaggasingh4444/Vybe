@@ -8,7 +8,7 @@ import { isDataUrl, isStoredMediaUrl, saveBinaryMedia, saveDataUrlMedia } from "
 const chatClients = new Map();
 
 const safeUserSelect = "name userName profileImage followers following";
-const messageUserSelect = "name userName";
+const messageUserSelect = "name userName profileImage";
 const reactionUserSelect = "name userName profileImage";
 const sharedContentModels = {
   post: Post,

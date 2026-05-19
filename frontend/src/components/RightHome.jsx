@@ -279,6 +279,44 @@ function RightHome() {
   const stopTypingTimeoutRef = useRef(null);
   const incomingTypingTimeoutsRef = useRef(new Map());
 
+  const syncChatUserFromMessage = useCallback((message) => {
+    const currentUserId = userData?._id?.toString();
+    if (!currentUserId || !message?._id) return;
+
+    const senderId = getMessageSenderId(message)?.toString();
+    const receiverId = getMessageReceiverId(message)?.toString();
+    const otherUser = senderId === currentUserId ? message.receiver : message.sender;
+    const otherUserId = otherUser?._id?.toString();
+    if (!otherUserId || otherUserId === currentUserId) return;
+
+    const selectedId = selectedChatRef.current?._id?.toString();
+    const isIncoming = receiverId === currentUserId;
+    const isOpenChat = selectedId === otherUserId;
+
+    setChatUsers((currentUsers) => {
+      const existing = currentUsers.find((user) => user._id?.toString() === otherUserId);
+      const unreadCount =
+        isIncoming && !isOpenChat
+          ? (existing?.unreadCount || 0) + 1
+          : isOpenChat
+            ? 0
+            : existing?.unreadCount || 0;
+      const nextUser = {
+        ...existing,
+        ...otherUser,
+        _id: otherUserId,
+        profileImage: otherUser.profileImage || existing?.profileImage || "",
+        unreadCount,
+        isOnline: existing?.isOnline || onlineUserIds.has(otherUserId),
+      };
+
+      return [
+        nextUser,
+        ...currentUsers.filter((user) => user._id?.toString() !== otherUserId),
+      ];
+    });
+  }, [onlineUserIds, userData?._id]);
+
   const followingIds = new Set((userData?.following || []).map((id) => id.toString()));
   const followerIds = new Set((userData?.followers || []).map((id) => id.toString()));
   const isUserOnline = (user) => Boolean(user?.isOnline || onlineUserIds.has(user?._id));
@@ -672,6 +710,7 @@ function RightHome() {
 
         const incoming = data.message;
         setTypingIndicator(incoming.sender?._id, false);
+        syncChatUserFromMessage(incoming);
 
         const selectedId = selectedChatRef.current?._id;
         const currentUserId = userData?._id;
@@ -696,11 +735,11 @@ function RightHome() {
     };
 
     events.onerror = () => {
-      events.close();
+      fetchChatUsers();
     };
 
     return () => events.close();
-  }, [isDesktop, setTypingIndicator, userData?._id]);
+  }, [isDesktop, setTypingIndicator, syncChatUserFromMessage, userData?._id]);
 
   useEffect(() => {
     if (!isDesktop || !selectedChat?._id) return undefined;
