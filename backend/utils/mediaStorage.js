@@ -34,8 +34,11 @@ const getSafeFolder = (folder) =>
 const isLocalHost = (host = "") =>
   ["localhost", "127.0.0.1", "0.0.0.0"].includes(host.split(":")[0]);
 
-const shouldStoreInDatabase = (safeFolder, req) => {
+const shouldStoreInDatabase = (safeFolder, req, mediaKind) => {
   const storageMode = (process.env.MEDIA_STORAGE || "").toLowerCase();
+
+  // MongoDB documents are capped at 16 MB, so hosted videos need file storage.
+  if (mediaKind === "video") return false;
 
   if (["db", "database", "mongo", "mongodb"].includes(storageMode)) return true;
   if (["file", "files", "filesystem", "uploads"].includes(storageMode)) return false;
@@ -48,11 +51,11 @@ export const saveDataUrlMedia = async (dataUrl, folder, req) => {
   const match = typeof dataUrl === "string" ? dataUrl.match(dataUrlPattern) : null;
   if (!match) return dataUrl;
 
-  const [, , rawExtension, base64Data] = match;
+  const [, mediaKind, rawExtension, base64Data] = match;
   const extension = extensionMap[rawExtension.toLowerCase()] || rawExtension.toLowerCase();
   const safeFolder = getSafeFolder(folder);
 
-  if (shouldStoreInDatabase(safeFolder, req)) {
+  if (shouldStoreInDatabase(safeFolder, req, mediaKind)) {
     return dataUrl;
   }
 

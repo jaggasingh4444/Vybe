@@ -8,7 +8,9 @@ import { logout, setUserData } from "../redux/userSlice";
 import { getTabAuthHeaders, markTabLoggedOut, withTabAuth } from "../utils/tabAuth";
 import { downloadMediaFile } from "../utils/mediaDownload";
 
-const MAX_MEDIA_SIZE = 10 * 1024 * 1024;
+const ONE_MB = 1024 * 1024;
+const MAX_IMAGE_SIZE = 10 * ONE_MB;
+const MAX_VIDEO_SIZE = 45 * ONE_MB;
 const MESSAGE_TIMEOUT_MS = 12000;
 const EMOJI_OPTIONS = ["😀", "😂", "😍", "🔥", "❤️", "🙌", "👏", "😎", "🥹", "👍", "✨", "💯"];
 const REACTION_OPTIONS = ["❤️", "😂", "🔥", "👏", "😮", "😢", "👍"];
@@ -24,6 +26,9 @@ const shouldAutoDismissStatus = (status) => /\b(uploaded|deleted)\b/i.test(statu
 const getContentKey = (item) => (item?._id && item?.type ? `${item.type}-${item._id}` : "");
 const getReplyKey = (item, commentId) => `${getContentKey(item)}-${commentId}-reply`;
 const isTextPost = (item) => item?.type === "post" && item?.mediaType === "text";
+const getMediaSizeLimit = (file) =>
+  file?.type?.startsWith("video/") ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
+const formatMediaSize = (bytes) => `${Math.round(bytes / ONE_MB)} MB`;
 const sharedContentToFeedItem = (sharedContent) => {
   if (!sharedContent?.contentId) return null;
 
@@ -283,6 +288,8 @@ function Feed() {
   const [mobileTypingUserIds, setMobileTypingUserIds] = useState(() => new Set());
   const [mobileBusyUserId, setMobileBusyUserId] = useState("");
   const [mobileConversationMenuOpen, setMobileConversationMenuOpen] = useState(false);
+  const [mobileChatViewportHeight, setMobileChatViewportHeight] = useState(0);
+  const [mobileKeyboardOpen, setMobileKeyboardOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(() =>
     typeof window === "undefined" ? false : window.matchMedia("(max-width: 1023px)").matches
   );
@@ -489,8 +496,11 @@ function Feed() {
       return;
     }
 
-    if (files.some((file) => file.size > MAX_MEDIA_SIZE)) {
-      setMobileChatStatus("Each chat media must be under 10 MB.");
+    const oversizedFile = files.find((file) => file.size > getMediaSizeLimit(file));
+    if (oversizedFile) {
+      setMobileChatStatus(
+        `Each ${oversizedFile.type.startsWith("video/") ? "video" : "image"} must be under ${formatMediaSize(getMediaSizeLimit(oversizedFile))}.`
+      );
       return;
     }
 
@@ -1087,8 +1097,8 @@ function Feed() {
 
     if (!file) return;
 
-    if (file.size > MAX_MEDIA_SIZE) {
-      setMessage("Please choose a file under 10 MB.");
+    if (file.size > getMediaSizeLimit(file)) {
+      setMessage(`Please choose a file under ${formatMediaSize(getMediaSizeLimit(file))}.`);
       return;
     }
 
@@ -1117,8 +1127,8 @@ function Feed() {
 
     if (!file) return;
 
-    if (file.size > MAX_MEDIA_SIZE) {
-      setMessage("Please choose a story under 10 MB.");
+    if (file.size > getMediaSizeLimit(file)) {
+      setMessage(`Please choose a story under ${formatMediaSize(getMediaSizeLimit(file))}.`);
       return;
     }
 
@@ -2771,6 +2781,36 @@ function Feed() {
   };
 
   useEffect(() => {
+    if (!isMobileChatTab) {
+      setMobileChatViewportHeight(0);
+      setMobileKeyboardOpen(false);
+      return undefined;
+    }
+
+    const viewport = window.visualViewport;
+    const updateViewport = () => {
+      const height = Math.round(viewport?.height || window.innerHeight || 0);
+      const keyboardHeight = viewport
+        ? window.innerHeight - viewport.height - viewport.offsetTop
+        : 0;
+
+      setMobileChatViewportHeight(height);
+      setMobileKeyboardOpen(keyboardHeight > 120);
+    };
+
+    updateViewport();
+    viewport?.addEventListener("resize", updateViewport);
+    viewport?.addEventListener("scroll", updateViewport);
+    window.addEventListener("resize", updateViewport);
+
+    return () => {
+      viewport?.removeEventListener("resize", updateViewport);
+      viewport?.removeEventListener("scroll", updateViewport);
+      window.removeEventListener("resize", updateViewport);
+    };
+  }, [isMobileChatTab]);
+
+  useEffect(() => {
     const root = feedRootRef.current;
     if (!root) return undefined;
 
@@ -2859,6 +2899,14 @@ function Feed() {
 
   const activeChatMedia = chatMediaViewer?.attachments?.[chatMediaViewer.index];
   const chatMediaTotal = chatMediaViewer?.attachments?.length || 0;
+  const hideMobileChatNav = Boolean(isMobileChatTab && selectedMobileChat && mobileKeyboardOpen);
+  const mobileChatViewportStyle =
+    isMobileChatTab && mobileChatViewportHeight
+      ? { height: `${mobileChatViewportHeight}px` }
+      : undefined;
+  const mobileChatContentStyle = isMobileChatTab
+    ? { paddingBottom: hideMobileChatNav ? "0.75rem" : "4.75rem" }
+    : undefined;
   const showChatMediaStep = (direction) => {
     setChatMediaViewer((current) => {
       if (!current?.attachments?.length) return current;
@@ -2872,17 +2920,18 @@ function Feed() {
     <div
       ref={feedRootRef}
       data-vybe-feed-root
+      style={mobileChatViewportStyle}
       className={`w-full lg:flex-1 lg:max-w-[760px] bg-black relative border-x border-gray-900 ${
         isMobileChatTab ? "pb-0" : "pb-20"
       } lg:pb-0 ${
         isMobileChatTab
-          ? "h-[100dvh] overflow-hidden"
+          ? "fixed inset-x-0 top-0 z-30 flex flex-col h-[100svh] overflow-hidden lg:relative lg:inset-auto"
           : isMobileReelFeed
           ? "h-[100vh] overflow-y-auto snap-y snap-mandatory"
           : "min-h-[100vh] lg:h-[100vh] lg:overflow-y-auto"
       }`}
     >
-      <div className="sticky top-0 z-20 bg-black/95 border-b border-gray-900 px-5 py-4 flex items-center justify-between">
+      <div className="sticky top-0 z-20 shrink-0 bg-black/95 border-b border-gray-900 px-5 py-4 flex items-center justify-between">
         <div className="min-w-0 flex items-center gap-3">
           {activeMobileTab === "profile" ? (
             <button
@@ -3278,11 +3327,12 @@ function Feed() {
       ) : null}
 
       <div
-        className={`max-w-[560px] mx-auto flex flex-col ${
+        style={mobileChatContentStyle}
+        className={`w-full max-w-[560px] mx-auto flex flex-col ${
           isMobileReelFeed
             ? "px-0 py-0 gap-0"
             : isMobileChatTab
-              ? "h-[calc(100dvh-8.5rem)] px-3 py-3 gap-0 overflow-hidden"
+              ? "flex-1 min-h-0 px-3 pt-3 gap-0 overflow-hidden"
               : "px-4 py-5 gap-6"
         }`}
       >
@@ -3775,7 +3825,17 @@ function Feed() {
                   <input
                     value={mobileMessageText}
                     onChange={handleMobileMessageTextChange}
-                    onBlur={() => stopMobileOutgoingTyping(selectedMobileChat?._id)}
+                    onFocus={() => {
+                      setMobileKeyboardOpen(true);
+                      window.setTimeout(() => {
+                        const list = mobileMessagesListRef.current;
+                        list?.scrollTo({ top: list.scrollHeight });
+                      }, 80);
+                    }}
+                    onBlur={() => {
+                      stopMobileOutgoingTyping(selectedMobileChat?._id);
+                      window.setTimeout(() => setMobileKeyboardOpen(false), 160);
+                    }}
                     placeholder="Message..."
                     className="min-w-0 flex-1 h-11 rounded-md bg-[#111] text-white px-3 outline-none placeholder:text-gray-600"
                     maxLength={1000}
@@ -4895,7 +4955,11 @@ function Feed() {
         </div>
       ) : null}
 
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 h-16 bg-black/95 border-t border-gray-900 grid grid-cols-4">
+      <div
+        className={`lg:hidden fixed bottom-0 left-0 right-0 z-40 h-16 bg-black/95 border-t border-gray-900 ${
+          hideMobileChatNav ? "hidden" : "grid grid-cols-4"
+        }`}
+      >
         <button
           type="button"
           onClick={() => setActiveMobileTab("home")}
