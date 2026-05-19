@@ -11,11 +11,7 @@ export const mediaUrl = (value) => {
 
   try {
     const url = new URL(value);
-    const localUpload =
-      ["localhost", "127.0.0.1", "0.0.0.0"].includes(url.hostname) &&
-      url.pathname.startsWith("/uploads/");
-
-    if (localUpload) {
+    if (url.pathname.startsWith("/uploads/")) {
       return `${API_BASE_URL}${url.pathname}${url.search}${url.hash}`;
     }
   } catch {

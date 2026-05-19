@@ -66,7 +66,7 @@ export const saveDataUrlMedia = async (dataUrl, folder, req) => {
   await mkdir(directory, { recursive: true });
   await writeFile(path.join(directory, filename), base64Data, "base64");
 
-  return `${getPublicOrigin(req)}/uploads/${safeFolder}/${filename}`;
+  return `/uploads/${safeFolder}/${filename}`;
 };
 
 export const isStoredMediaUrl = (value) =>
@@ -87,5 +87,5 @@ export const saveBinaryMedia = async (buffer, mimeType, folder, req) => {
   await mkdir(directory, { recursive: true });
   await writeFile(path.join(directory, filename), buffer);
 
-  return `${getPublicOrigin(req)}/uploads/${safeFolder}/${filename}`;
+  return `/uploads/${safeFolder}/${filename}`;
 };
