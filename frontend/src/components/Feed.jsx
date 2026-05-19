@@ -29,6 +29,7 @@ const shouldAutoDismissStatus = (status) => /\b(uploaded|deleted)\b/i.test(statu
 const getContentKey = (item) => (item?._id && item?.type ? `${item.type}-${item._id}` : "");
 const getReplyKey = (item, commentId) => `${getContentKey(item)}-${commentId}-reply`;
 const isTextPost = (item) => item?.type === "post" && item?.mediaType === "text";
+const getContentTypeLabel = (item) => (item?.type === "reel" ? "reel" : "post");
 const getMediaSizeLimit = (file) =>
   file?.type?.startsWith("video/") ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
 const formatMediaSize = (bytes) => `${Math.round(bytes / ONE_MB)} MB`;
@@ -514,6 +515,8 @@ function Feed() {
   const [mobilePasswordPanelOpen, setMobilePasswordPanelOpen] = useState(false);
   const [shareItem, setShareItem] = useState(null);
   const [shareSearch, setShareSearch] = useState("");
+  const [shareUsers, setShareUsers] = useState([]);
+  const [shareSearchLoading, setShareSearchLoading] = useState(false);
   const [shareStatus, setShareStatus] = useState("");
   const [sharingUserId, setSharingUserId] = useState("");
   const [loadingFeed, setLoadingFeed] = useState(true);
@@ -974,6 +977,37 @@ function Feed() {
     }
   };
 
+  const fetchShareUsers = useCallback(async (query = "", signal) => {
+    setShareSearchLoading(true);
+
+    try {
+      const params = new URLSearchParams({ all: "1" });
+      const normalizedQuery = query.trim();
+      if (normalizedQuery) params.set("q", normalizedQuery);
+
+      const res = await fetch(apiUrl(`/api/chat/search-users?${params.toString()}`), {
+        credentials: "include",
+        headers: getTabAuthHeaders(),
+        signal,
+      });
+
+      if (!res.ok) throw new Error("Unable to load share users");
+
+      const data = await res.json();
+      if (!signal?.aborted) {
+        setShareUsers(data);
+      }
+    } catch (error) {
+      if (error.name !== "AbortError") {
+        setShareUsers([]);
+      }
+    } finally {
+      if (!signal?.aborted) {
+        setShareSearchLoading(false);
+      }
+    }
+  }, []);
+
   const fetchMobileMessages = async (userId, options = {}) => {
     try {
       const since = options.since
@@ -1039,6 +1073,24 @@ function Feed() {
       controller.abort();
     };
   }, [activeMobileTab, mobileChatSearch, userData?._id]);
+
+  useEffect(() => {
+    if (!shareItem || !userData?._id) {
+      setShareUsers([]);
+      setShareSearchLoading(false);
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    const searchTimer = window.setTimeout(() => {
+      fetchShareUsers(shareSearch, controller.signal);
+    }, 200);
+
+    return () => {
+      window.clearTimeout(searchTimer);
+      controller.abort();
+    };
+  }, [fetchShareUsers, shareItem, shareSearch, userData?._id]);
 
   useEffect(() => {
     const query = feedSearch.trim();
@@ -2400,10 +2452,11 @@ function Feed() {
 
     const handleShareContent = (event) => {
       const sharedItem = event.detail?.item || sharedContentToFeedItem(event.detail?.sharedContent);
-      if (sharedItem?.type === "reel") {
+      if (sharedItem && ["post", "reel"].includes(sharedItem.type)) {
         setShareItem(sharedItem);
         setShareSearch("");
         setShareStatus("");
+        setShareUsers([]);
         fetchMobileChatUsers();
       }
     };
@@ -2429,19 +2482,21 @@ function Feed() {
   };
 
   const openShareSheet = (item) => {
-    if (!item || item.type !== "reel") {
-      setMessage("Only reels can be shared from here.");
+    if (!item || !["post", "reel"].includes(item.type)) {
+      setMessage("This content cannot be shared.");
       return;
     }
 
     setShareItem(item);
     setShareSearch("");
     setShareStatus("");
+    setShareUsers([]);
     fetchMobileChatUsers();
   };
 
-  const shareReelToUser = async (targetUser) => {
+  const shareContentToUser = async (targetUser) => {
     if (!shareItem?._id || !targetUser?._id || sharingUserId) return;
+    const shareType = getContentTypeLabel(shareItem);
 
     setSharingUserId(targetUser._id);
     setShareStatus("");
@@ -2454,9 +2509,9 @@ function Feed() {
           credentials: "include",
           headers: getTabAuthHeaders({ "Content-Type": "application/json" }),
           body: JSON.stringify({
-            text: `Shared a reel`,
+            text: `Shared a ${shareType}`,
             sharedContent: {
-              type: "reel",
+              type: shareItem.type,
               id: shareItem._id,
             },
           }),
@@ -2688,7 +2743,7 @@ function Feed() {
       }, [])
     : mobileChatUsers;
   const shareCandidateMap = new Map();
-  [...mobileChatUsers, ...suggestedUsers].forEach((candidate) => {
+  [...mobileChatUsers, ...shareUsers, ...suggestedUsers].forEach((candidate) => {
     if (!candidate?._id || candidate._id === userData?._id) return;
     shareCandidateMap.set(candidate._id, {
       ...shareCandidateMap.get(candidate._id),
@@ -2913,6 +2968,7 @@ function Feed() {
   const renderSharedContentCard = (chatMessage) => {
     const sharedItem = sharedContentToFeedItem(chatMessage.sharedContent);
     if (!sharedItem) return null;
+    const sharedTypeLabel = getContentTypeLabel(sharedItem);
 
     return (
       <div className="mt-2 w-64 max-w-full overflow-hidden rounded-lg border border-white/10 bg-black/30 text-left">
@@ -2923,14 +2979,20 @@ function Feed() {
         >
           <div className="flex gap-3 p-2">
             <div className="h-20 w-14 shrink-0 overflow-hidden rounded-md bg-black">
-              {sharedItem.mediaType === "video" ? (
+              {sharedItem.mediaType === "video" && sharedItem.media ? (
                 <video src={mediaUrl(sharedItem.media)} muted playsInline preload="metadata" className="h-full w-full object-cover" />
-              ) : (
+              ) : sharedItem.mediaType === "image" && sharedItem.media ? (
                 <img src={mediaUrl(sharedItem.media)} alt="Shared media" className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-[#101010] px-2">
+                  <span className="line-clamp-3 text-center text-[10px] font-semibold leading-tight text-white/80">
+                    {sharedItem.caption || "Text post"}
+                  </span>
+                </div>
               )}
             </div>
             <div className="min-w-0 flex-1 py-1">
-              <p className="text-xs font-semibold text-white">Shared reel</p>
+              <p className="text-xs font-semibold text-white">Shared {sharedTypeLabel}</p>
               <p className="mt-1 truncate text-xs text-white/70">
                 @{sharedItem.author?.userName || "vybe_user"}
               </p>
@@ -4389,13 +4451,9 @@ function Feed() {
                     <button type="button" onClick={() => setSelectedProfileItem(item)} aria-label="View comments">
                       <FaRegComment />
                     </button>
-                    {item.type === "reel" ? (
-                      <button type="button" onClick={() => openShareSheet(item)} aria-label="Share reel">
-                        <FiSend />
-                      </button>
-                    ) : (
+                    <button type="button" onClick={() => openShareSheet(item)} aria-label={`Share ${getContentTypeLabel(item)}`}>
                       <FiSend />
-                    )}
+                    </button>
                   </div>
                   <FaRegBookmark />
                 </div>
@@ -4621,14 +4679,17 @@ function Feed() {
           <div className="w-full sm:max-w-[420px] max-h-[82vh] overflow-hidden rounded-t-2xl sm:rounded-lg border-t sm:border border-gray-800 bg-[#050505] text-white">
             <div className="h-14 px-4 flex items-center justify-between border-b border-gray-900">
               <div className="min-w-0">
-                <p className="font-semibold">Share reel</p>
+                <p className="font-semibold">Share {getContentTypeLabel(shareItem)}</p>
                 <p className="text-xs text-gray-500 truncate">
                   @{shareItem.author?.userName || "vybe_user"}
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => setShareItem(null)}
+                onClick={() => {
+                  setShareItem(null);
+                  setShareUsers([]);
+                }}
                 className="w-9 h-9 rounded-full bg-[#111] text-gray-300 flex items-center justify-center"
                 aria-label="Close share"
               >
@@ -4648,7 +4709,9 @@ function Feed() {
               </div>
 
               <div className="max-h-[48vh] overflow-y-auto flex flex-col gap-2 pr-1">
-                {visibleShareUsers.length > 0 ? (
+                {shareSearchLoading ? (
+                  <p className="py-8 text-center text-sm text-gray-500">Loading users...</p>
+                ) : visibleShareUsers.length > 0 ? (
                   visibleShareUsers.map((shareUser) => (
                     <div
                       key={shareUser._id}
@@ -4668,7 +4731,7 @@ function Feed() {
                       </div>
                       <button
                         type="button"
-                        onClick={() => shareReelToUser(shareUser)}
+                        onClick={() => shareContentToUser(shareUser)}
                         disabled={Boolean(sharingUserId)}
                         className="h-9 px-3 rounded-md bg-white text-black text-sm font-semibold disabled:opacity-50"
                       >
@@ -4677,7 +4740,9 @@ function Feed() {
                     </div>
                   ))
                 ) : (
-                  <p className="py-8 text-center text-sm text-gray-500">No users found.</p>
+                  <p className="py-8 text-center text-sm text-gray-500">
+                    No connected users found.
+                  </p>
                 )}
               </div>
 
@@ -4794,15 +4859,13 @@ function Feed() {
                 <span>{selectedProfileItem.likes?.length || 0} likes</span>
                 <div className="flex items-center gap-3">
                   <span>{selectedProfileItem.comments?.length || 0} comments</span>
-                  {selectedProfileItem.type === "reel" ? (
-                    <button
-                      type="button"
-                      onClick={() => openShareSheet(selectedProfileItem)}
-                      className="flex items-center gap-1 text-blue-400 hover:text-blue-300"
-                    >
-                      <FiSend /> Share
-                    </button>
-                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => openShareSheet(selectedProfileItem)}
+                    className="flex items-center gap-1 text-blue-400 hover:text-blue-300"
+                  >
+                    <FiSend /> Share
+                  </button>
                 </div>
               </div>
 

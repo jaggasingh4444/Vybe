@@ -350,7 +350,9 @@ export const getChatUsers = async (req, res) => {
 export const searchConnectedChatUsers = async (req, res) => {
   try {
     const rawQuery = typeof req.query.q === "string" ? req.query.q.trim() : "";
-    if (!rawQuery) {
+    const includeAllConnections = req.query.all === "1";
+
+    if (!rawQuery && !includeAllConnections) {
       return res.status(200).json([]);
     }
 
@@ -367,22 +369,28 @@ export const searchConnectedChatUsers = async (req, res) => {
       return res.status(200).json([]);
     }
 
-    const normalizedQuery = rawQuery.replace(/^@/, "");
-    const searchRegex = new RegExp(escapeRegex(normalizedQuery), "i");
-    const searchConditions = [
-      { userName: searchRegex },
-      { name: searchRegex },
-    ];
+    const userQuery = {
+      _id: { $in: mutualConnectionIds },
+    };
 
-    if (mongoose.Types.ObjectId.isValid(normalizedQuery)) {
-      searchConditions.push({ _id: normalizedQuery });
+    if (rawQuery) {
+      const normalizedQuery = rawQuery.replace(/^@/, "");
+      const searchRegex = new RegExp(escapeRegex(normalizedQuery), "i");
+      const searchConditions = [
+        { userName: searchRegex },
+        { name: searchRegex },
+      ];
+
+      if (mongoose.Types.ObjectId.isValid(normalizedQuery)) {
+        searchConditions.push({ _id: normalizedQuery });
+      }
+
+      userQuery.$or = searchConditions;
     }
 
-    const users = await User.find({
-      _id: { $in: mutualConnectionIds },
-      $or: searchConditions,
-    })
+    const users = await User.find(userQuery)
       .select(safeUserSelect)
+      .sort({ userName: 1 })
       .limit(20);
 
     await Promise.all(users.map((user) => persistLegacyProfileImage(user, req)));

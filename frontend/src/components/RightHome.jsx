@@ -21,6 +21,7 @@ const TYPING_REFRESH_MS = 2000;
 const TYPING_VISIBLE_MS = 3000;
 const formatUnreadCount = (count) => (count > 10 ? "10+" : count);
 const shouldAutoDismissStatus = (status) => /\b(uploaded|deleted)\b/i.test(status || "");
+const getContentTypeLabel = (item) => (item?.type === "reel" ? "reel" : "post");
 const getMediaSizeLimit = (file) =>
   file?.type?.startsWith("video/") ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
 const formatMediaSize = (bytes) => `${Math.round(bytes / ONE_MB)} MB`;
@@ -983,6 +984,7 @@ function RightHome() {
   const renderSharedContentCard = (message) => {
     const sharedItem = sharedContentToFeedItem(message.sharedContent);
     if (!sharedItem) return null;
+    const sharedTypeLabel = getContentTypeLabel(sharedItem);
 
     return (
       <div className="mt-2 w-60 max-w-full overflow-hidden rounded-lg border border-white/10 bg-black/30 text-left">
@@ -997,14 +999,20 @@ function RightHome() {
         >
           <div className="flex gap-3 p-2">
             <div className="h-20 w-14 shrink-0 overflow-hidden rounded-md bg-black">
-              {sharedItem.mediaType === "video" ? (
+              {sharedItem.mediaType === "video" && sharedItem.media ? (
                 <video src={mediaUrl(sharedItem.media)} muted playsInline preload="metadata" className="h-full w-full object-cover" />
-              ) : (
+              ) : sharedItem.mediaType === "image" && sharedItem.media ? (
                 <img src={mediaUrl(sharedItem.media)} alt="Shared media" className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-[#101010] px-2">
+                  <span className="line-clamp-3 text-center text-[10px] font-semibold leading-tight text-white/80">
+                    {sharedItem.caption || "Text post"}
+                  </span>
+                </div>
               )}
             </div>
             <div className="min-w-0 flex-1 py-1">
-              <p className="text-xs font-semibold text-white">Shared reel</p>
+              <p className="text-xs font-semibold text-white">Shared {sharedTypeLabel}</p>
               <p className="mt-1 truncate text-xs text-white/70">
                 @{sharedItem.author?.userName || "vybe_user"}
               </p>
