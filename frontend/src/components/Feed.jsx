@@ -218,6 +218,15 @@ const mergeServerMessagesIntoList = (currentMessages, serverMessages) => {
     (left, right) => new Date(left.createdAt || 0) - new Date(right.createdAt || 0)
   );
 };
+const getLatestMessageSyncTime = (messages) => {
+  const latestTime = messages.reduce((latest, message) => {
+    if (message.pending) return latest;
+    const messageTime = new Date(message.createdAt || 0).getTime();
+    return Number.isFinite(messageTime) ? Math.max(latest, messageTime) : latest;
+  }, 0);
+
+  return latestTime ? new Date(Math.max(0, latestTime - 3000)).toISOString() : "";
+};
 
 const readFileAsDataUrl = (file) =>
   new Promise((resolve, reject) => {
@@ -391,6 +400,8 @@ function Feed() {
   const pendingReplyIdsRef = useRef(new Set());
   const pendingContentDeleteIdsRef = useRef(new Set());
   const pendingCommentDeleteIdsRef = useRef(new Set());
+  const mobileMessagesRef = useRef([]);
+  const mobileMessageSyncingRef = useRef(false);
   const mobileMessagesListRef = useRef(null);
   const mobileMessageMediaInputRef = useRef(null);
   const mobileOutgoingTypingRef = useRef({ receiverId: "", active: false, lastSentAt: 0 });
@@ -716,6 +727,10 @@ function Feed() {
   }, [feedVideosMuted, activeMobileTab, feed]);
 
   useEffect(() => {
+    mobileMessagesRef.current = mobileMessages;
+  }, [mobileMessages]);
+
+  useEffect(() => {
     const timer = window.setInterval(() => {
       setStoryClock(Date.now());
     }, 60 * 1000);
@@ -833,7 +848,10 @@ function Feed() {
 
   const fetchMobileMessages = async (userId, options = {}) => {
     try {
-      const res = await fetch(apiUrl(`/api/chat/${userId}/messages`), {
+      const since = options.since
+        ? `?since=${encodeURIComponent(options.since)}`
+        : "";
+      const res = await fetch(apiUrl(`/api/chat/${userId}/messages${since}`), {
         credentials: "include",
         headers: getTabAuthHeaders(),
       });
@@ -841,7 +859,11 @@ function Feed() {
       if (!res.ok) throw new Error("Failed to load messages");
 
       const data = await res.json();
-      setMobileMessages((current) => mergeServerMessagesIntoList(current, data));
+      setMobileMessages((current) =>
+        options.since
+          ? data.reduce((messages, message) => mergeMessageIntoList(messages, message), current)
+          : mergeServerMessagesIntoList(current, data)
+      );
     } catch {
       if (!options.silent) {
         setMobileChatStatus("Unable to load messages.");
@@ -1077,11 +1099,18 @@ function Feed() {
     let stopped = false;
     const syncOpenChat = () => {
       if (stopped || document.visibilityState !== "visible") return;
-      fetchMobileMessages(selectedMobileChat._id, { silent: true });
+      if (mobileMessageSyncingRef.current) return;
+
+      const since = getLatestMessageSyncTime(mobileMessagesRef.current);
+      mobileMessageSyncingRef.current = true;
+      fetchMobileMessages(selectedMobileChat._id, { silent: true, since })
+        .finally(() => {
+          mobileMessageSyncingRef.current = false;
+        });
     };
 
-    const firstSync = window.setTimeout(syncOpenChat, 500);
-    const interval = window.setInterval(syncOpenChat, 1200);
+    const firstSync = window.setTimeout(syncOpenChat, 250);
+    const interval = window.setInterval(syncOpenChat, 700);
 
     return () => {
       stopped = true;

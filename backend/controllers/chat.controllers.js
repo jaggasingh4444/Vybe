@@ -362,11 +362,24 @@ export const searchConnectedChatUsers = async (req, res) => {
 export const getMessages = async (req, res) => {
   try {
     const otherUserId = req.params.userId;
+    const sinceDate = typeof req.query.since === "string" ? new Date(req.query.since) : null;
+    const hasSince = sinceDate && Number.isFinite(sinceDate.getTime());
+    const sinceFilter = hasSince ? { createdAt: { $gt: sinceDate } } : {};
+    const conversationFilter = {
+      ...visibleToUserFilter(req.userId),
+      $or: [
+        { sender: req.userId, receiver: otherUserId },
+        { sender: otherUserId, receiver: req.userId },
+      ],
+      ...sinceFilter,
+    };
+
     const unreadMessages = await Message.find({
       ...visibleToUserFilter(req.userId),
       sender: otherUserId,
       receiver: req.userId,
       read: { $ne: true },
+      ...sinceFilter,
     }).select("_id");
 
     const unreadMessageIds = unreadMessages.map((message) => message._id);
@@ -391,22 +404,17 @@ export const getMessages = async (req, res) => {
       sendToUser(otherUserId, payload);
     }
 
-    const messages = await Message.find({
-      ...visibleToUserFilter(req.userId),
-      $or: [
-        { sender: req.userId, receiver: otherUserId },
-        { sender: otherUserId, receiver: req.userId },
-      ],
-    })
+    const messages = await Message.find(conversationFilter)
       .populate("sender", messageUserSelect)
       .populate("receiver", messageUserSelect)
       .populate("reactions.user", reactionUserSelect)
-      .sort({ createdAt: 1 })
-      .limit(100);
+      .sort({ createdAt: hasSince ? 1 : -1 })
+      .limit(hasSince ? 30 : 100);
+    const orderedMessages = hasSince ? messages : messages.reverse();
 
-    await Promise.all(getReactionUsers(messages).map((user) => persistLegacyProfileImage(user, req)));
+    await Promise.all(getReactionUsers(orderedMessages).map((user) => persistLegacyProfileImage(user, req)));
 
-    return res.status(200).json(messages);
+    return res.status(200).json(orderedMessages);
   } catch (error) {
     return res.status(500).json({ message: `messages error ${error.message}` });
   }
