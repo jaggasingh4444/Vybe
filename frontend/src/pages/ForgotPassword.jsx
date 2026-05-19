@@ -138,7 +138,7 @@ function ForgotPassword() {
 
       {/* STEP 1: Enter Email */}
       {step === 1 && (
-        <div className='w-[90%] max-w-[500px] h-[450px] bg-white rounded-2xl flex justify-center items-center flex-col border-2 border-[#1a1f23] gap-5 p-6'>
+        <div className='w-[90%] max-w-[500px] h-[450px] bg-white text-black rounded-2xl flex justify-center items-center flex-col border-2 border-[#1a1f23] gap-5 p-6'>
           <h2 className='text-2xl font-bold'>Forgot Password</h2>
           <p className='text-gray-600 text-sm text-center'>Enter your email address and we'll send you an OTP</p>
           
@@ -167,7 +167,7 @@ function ForgotPassword() {
                 }}
                 onFocus={() => setInputClicked({ ...inputClicked, email: true })}
                 onBlur={() => !email && setInputClicked({ ...inputClicked, email: false })}
-                className="w-full h-full outline-none border-0 bg-transparent text-[16px]"
+                className="w-full h-full outline-none border-0 bg-transparent text-black text-[16px]"
                 required
               />
             </div>
@@ -190,7 +190,7 @@ function ForgotPassword() {
 
       {/* STEP 2: Verify OTP */}
       {step === 2 && (
-        <div className='w-[90%] max-w-[500px] h-[450px] bg-white rounded-2xl flex justify-center items-center flex-col border-2 border-[#1a1f23] gap-5 p-6'>
+        <div className='w-[90%] max-w-[500px] h-[450px] bg-white text-black rounded-2xl flex justify-center items-center flex-col border-2 border-[#1a1f23] gap-5 p-6'>
           <h2 className='text-2xl font-bold'>Verify OTP</h2>
           <p className='text-gray-600 text-sm text-center'>We've sent a 6-digit code to {email}</p>
           
@@ -220,7 +220,7 @@ function ForgotPassword() {
                 }}
                 onFocus={() => setInputClicked({ ...inputClicked, otp: true })}
                 onBlur={() => !otp && setInputClicked({ ...inputClicked, otp: false })}
-                className="w-full h-full outline-none border-0 bg-transparent text-[16px]"
+                className="w-full h-full outline-none border-0 bg-transparent text-black text-[16px]"
                 required
               />
             </div>
@@ -243,7 +243,7 @@ function ForgotPassword() {
 
       {/* STEP 3: Reset Password */}
       {step === 3 && (
-        <div className='w-[90%] max-w-[500px] h-[550px] bg-white rounded-2xl flex justify-center items-center flex-col border-2 border-[#1a1f23] gap-5 p-6'>
+        <div className='w-[90%] max-w-[500px] h-[550px] bg-white text-black rounded-2xl flex justify-center items-center flex-col border-2 border-[#1a1f23] gap-5 p-6'>
           <h2 className='text-2xl font-bold'>Reset Password</h2>
           <p className='text-gray-600 text-sm text-center'>Enter your new password</p>
           
@@ -273,7 +273,7 @@ function ForgotPassword() {
                 }}
                 onFocus={() => setInputClicked({ ...inputClicked, newPassword: true })}
                 onBlur={() => !newPassword && setInputClicked({ ...inputClicked, newPassword: false })}
-                className="w-full h-full outline-none border-0 bg-transparent text-[16px]"
+                className="w-full h-full outline-none border-0 bg-transparent text-black text-[16px]"
                 required
               />
               {!showNewPassword ? (
@@ -320,7 +320,7 @@ function ForgotPassword() {
                 }}
                 onFocus={() => setInputClicked({ ...inputClicked, confirmPassword: true })}
                 onBlur={() => !confirmPassword && setInputClicked({ ...inputClicked, confirmPassword: false })}
-                className="w-full h-full outline-none border-0 bg-transparent text-[16px]"
+                className="w-full h-full outline-none border-0 bg-transparent text-black text-[16px]"
                 required
               />
               {!showConfirmPassword ? (

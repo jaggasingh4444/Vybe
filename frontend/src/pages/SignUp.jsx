@@ -197,7 +197,7 @@ function SignUp() {
         </div>
       )}
 
-      <div className="flex w-[90%] lg:max-w-[60%] min-h-[650px] bg-white rounded-2xl overflow-hidden border-2 border-black">
+      <div className="flex w-[90%] lg:max-w-[60%] min-h-[650px] bg-white text-black rounded-2xl overflow-hidden border-2 border-black">
 
         {/* LEFT */}
         <div className="w-full lg:w-1/2 flex flex-col items-center p-6 gap-5">
@@ -247,7 +247,7 @@ function SignUp() {
                   onClick={() => setInputClicked({ ...inputClicked, otp: true })}
                 >
                   <label
-                    className={`absolute left-4 bg-white px-1 transition-all
+                    className={`absolute left-4 bg-white px-1 text-gray-700 transition-all
                       ${inputClicked.otp || otp ? "top-[-12px] text-sm" : "top-[12px]"}`}
                   >
                     Verification Code
@@ -257,7 +257,7 @@ function SignUp() {
                     value={otp}
                     maxLength={6}
                     onChange={(event) => setOtp(event.target.value.replace(/\D/g, ""))}
-                    className="w-full h-full outline-none bg-transparent"
+                    className="w-full h-full outline-none bg-transparent text-black"
                     required
                   />
                 </div>
@@ -307,7 +307,7 @@ function SignUp() {
               }
             >
               <label
-                className={`absolute left-4 bg-white px-1 transition-all
+                className={`absolute left-4 bg-white px-1 text-gray-700 transition-all
                   ${
                     inputClicked.password || password
                       ? "top-[-12px] text-sm"
@@ -321,7 +321,7 @@ function SignUp() {
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full h-full outline-none bg-transparent"
+                className="w-full h-full outline-none bg-transparent text-black"
                 required
                 minLength={6}
               />
@@ -388,7 +388,7 @@ function Input({
       onClick={() => setInputClicked({ ...inputClicked, [id]: true })}
     >
       <label
-        className={`absolute left-4 bg-white px-1 transition-all
+        className={`absolute left-4 bg-white px-1 text-gray-700 transition-all
           ${
             inputClicked[id] || value
               ? "top-[-12px] text-sm"
@@ -403,7 +403,7 @@ function Input({
         value={value}
         onChange={(e) => setValue(e.target.value)}
         disabled={disabled}
-        className="w-full h-full outline-none bg-transparent"
+        className="w-full h-full outline-none bg-transparent text-black"
         required
       />
     </div>

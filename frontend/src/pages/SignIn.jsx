@@ -96,7 +96,7 @@ function SignIn() {
         </div>
       )}
 
-      <div className="flex w-[90%] lg:max-w-[60%] h-[500px] bg-white rounded-2xl overflow-hidden border-2 border-black">
+      <div className="flex w-[90%] lg:max-w-[60%] h-[500px] bg-white text-black rounded-2xl overflow-hidden border-2 border-black">
 
         {/* LEFT */}
         <div className="w-full lg:w-1/2 flex flex-col items-center p-6 gap-5">
@@ -117,7 +117,7 @@ function SignIn() {
               }
             >
               <label
-                className={`absolute left-4 bg-white px-1 transition-all
+                className={`absolute left-4 bg-white px-1 text-gray-700 transition-all
                   ${
                     inputClicked.userName || userName
                       ? "top-[-12px] text-sm"
@@ -139,7 +139,7 @@ function SignIn() {
                   !userName &&
                   setInputClicked({ ...inputClicked, userName: false })
                 }
-                className="w-full h-full outline-none bg-transparent"
+                className="w-full h-full outline-none bg-transparent text-black"
                 required
               />
             </div>
@@ -152,7 +152,7 @@ function SignIn() {
               }
             >
               <label
-                className={`absolute left-4 bg-white px-1 transition-all
+                className={`absolute left-4 bg-white px-1 text-gray-700 transition-all
                   ${
                     inputClicked.password || password
                       ? "top-[-12px] text-sm"
@@ -174,7 +174,7 @@ function SignIn() {
                   !password &&
                   setInputClicked({ ...inputClicked, password: false })
                 }
-                className="w-full h-full outline-none bg-transparent"
+                className="w-full h-full outline-none bg-transparent text-black"
                 required
                 minLength={6}
               />
