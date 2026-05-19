@@ -81,6 +81,13 @@ const messageSchema = new mongoose.Schema(
     readAt: {
       type: Date,
     },
+    delivered: {
+      type: Boolean,
+      default: false,
+    },
+    deliveredAt: {
+      type: Date,
+    },
     deletedFor: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -110,6 +117,7 @@ const messageSchema = new mongoose.Schema(
 
 messageSchema.index({ sender: 1, receiver: 1, createdAt: -1 });
 messageSchema.index({ receiver: 1, read: 1, createdAt: -1 });
+messageSchema.index({ receiver: 1, delivered: 1, createdAt: -1 });
 messageSchema.index({ updatedAt: -1 });
 
 const Message = mongoose.model("Message", messageSchema);

@@ -219,6 +219,45 @@ const broadcastPresence = () => {
   }
 };
 
+const notifyDeliveredMessages = async (receiverId) => {
+  const pendingMessages = await Message.find({
+    ...visibleToUserFilter(receiverId),
+    receiver: receiverId,
+    delivered: { $ne: true },
+  }).select("_id sender");
+
+  if (pendingMessages.length === 0) return;
+
+  const deliveredAt = new Date();
+  const messageIds = pendingMessages.map((message) => message._id);
+
+  await Message.updateMany(
+    { _id: { $in: messageIds } },
+    { $set: { delivered: true, deliveredAt } }
+  );
+
+  const deliveredBySender = new Map();
+  for (const message of pendingMessages) {
+    const senderId = message.sender.toString();
+    const ids = deliveredBySender.get(senderId) || [];
+    ids.push(message._id.toString());
+    deliveredBySender.set(senderId, ids);
+  }
+
+  for (const [senderId, ids] of deliveredBySender) {
+    const payload = {
+      type: "messages:delivered",
+      receiverId,
+      senderId,
+      messageIds: ids,
+      deliveredAt,
+    };
+
+    sendToUser(senderId, payload);
+    sendToUser(receiverId, payload);
+  }
+};
+
 export const chatEvents = (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache, no-transform");
@@ -235,6 +274,7 @@ export const chatEvents = (req, res) => {
   );
   res.flush?.();
   broadcastPresence();
+  notifyDeliveredMessages(req.userId).catch(() => {});
 
   const heartbeat = setInterval(() => {
     try {
@@ -380,7 +420,7 @@ export const getMessages = async (req, res) => {
       receiver: req.userId,
       read: { $ne: true },
       ...sinceFilter,
-    }).select("_id");
+    }).select("_id delivered");
 
     const unreadMessageIds = unreadMessages.map((message) => message._id);
 
@@ -389,8 +429,25 @@ export const getMessages = async (req, res) => {
 
       await Message.updateMany(
         { _id: { $in: unreadMessageIds } },
-        { $set: { read: true, readAt } }
+        { $set: { read: true, readAt, delivered: true, deliveredAt: readAt } }
       );
+
+      const newlyDeliveredIds = unreadMessages
+        .filter((message) => !message.delivered)
+        .map((message) => message._id.toString());
+
+      if (newlyDeliveredIds.length > 0) {
+        const deliveredPayload = {
+          type: "messages:delivered",
+          receiverId: req.userId,
+          senderId: otherUserId,
+          messageIds: newlyDeliveredIds,
+          deliveredAt: readAt,
+        };
+
+        sendToUser(req.userId, deliveredPayload);
+        sendToUser(otherUserId, deliveredPayload);
+      }
 
       const payload = {
         type: "messages:seen",
@@ -447,6 +504,8 @@ export const sendMessage = async (req, res) => {
       return res.status(404).json({ message: "Receiver not found" });
     }
 
+    const receiverOnline = chatClients.has(receiverId.toString());
+    const deliveredAt = receiverOnline ? new Date() : undefined;
     const storedAttachments = await Promise.all(
       attachments.map(async (attachment) => ({
         mediaType: attachment.mediaType,
@@ -466,6 +525,8 @@ export const sendMessage = async (req, res) => {
       attachments: storedAttachments,
       sharedContent,
       replyTo,
+      delivered: receiverOnline,
+      deliveredAt,
     });
 
     const populatedMessage = await populateMessage(Message.findById(message._id));

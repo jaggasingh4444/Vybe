@@ -5,8 +5,10 @@ import App from './App.jsx'
 import { Provider } from 'react-redux'
 import store from './redux/store.js'
 import { installTabAuthFetch } from './utils/tabAuth.js'
+import { applyTheme, getStoredTheme } from './utils/theme.js'
 
 installTabAuthFetch()
+applyTheme(getStoredTheme())
 
 createRoot(document.getElementById('root')).render(
   

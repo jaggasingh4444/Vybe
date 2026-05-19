@@ -2,11 +2,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useDispatch, useSelector } from "react-redux";
 import dp from "../assets/dp.png";
 import { FaHeart, FaRegBookmark, FaRegComment, FaRegHeart } from "react-icons/fa6";
-import { FiArrowLeft, FiBell, FiCamera, FiChevronLeft, FiChevronRight, FiDownload, FiHome, FiImage, FiLock, FiLogOut, FiMessageCircle, FiMoreVertical, FiPlus, FiSave, FiSearch, FiSend, FiSettings, FiSmile, FiTrash2, FiUser, FiVideo, FiX } from "react-icons/fi";
+import { FiArrowLeft, FiBell, FiCamera, FiCheck, FiChevronLeft, FiChevronRight, FiDownload, FiHome, FiImage, FiLock, FiLogOut, FiMessageCircle, FiMoon, FiMoreVertical, FiPlus, FiSave, FiSearch, FiSend, FiSettings, FiSmile, FiSun, FiTrash2, FiUser, FiVideo, FiX } from "react-icons/fi";
 import { apiUrl, mediaUrl } from "../config/api";
 import { logout, setUserData } from "../redux/userSlice";
 import { getTabAuthHeaders, markTabLoggedOut, withTabAuth } from "../utils/tabAuth";
 import { downloadMediaFile } from "../utils/mediaDownload";
+import { useThemePreference } from "../utils/theme";
 
 const ONE_MB = 1024 * 1024;
 const MAX_IMAGE_SIZE = 10 * ONE_MB;
@@ -157,6 +158,34 @@ const getMessageClientId = (message) => message?.clientId || "";
 const getMessageReplyId = (message) => message?.replyTo?.messageId || "";
 const isSameId = (left, right) =>
   Boolean(left && right) && left.toString() === right.toString();
+const MessageStatusTicks = ({ message }) => {
+  if (!message || message.failed) return null;
+
+  if (message.pending) {
+    return (
+      <span className="mt-1 flex justify-end text-[10px] font-medium text-white/70">
+        Sending...
+      </span>
+    );
+  }
+
+  const seen = Boolean(message.read);
+  const delivered = seen || Boolean(message.delivered);
+  const label = seen ? "Seen" : delivered ? "Delivered" : "Sent";
+
+  return (
+    <span
+      className={`mt-1 flex items-center justify-end text-[13px] ${
+        seen ? "text-sky-300" : "text-white/70"
+      }`}
+      aria-label={label}
+      title={label}
+    >
+      <FiCheck />
+      {delivered ? <FiCheck className="-ml-1.5" /> : null}
+    </span>
+  );
+};
 const hasMatchingPendingMessage = (pendingMessage, confirmedMessage) => {
   if (!pendingMessage?.pending || !confirmedMessage?._id) return false;
 
@@ -399,6 +428,7 @@ function Feed() {
   const { suggestedUsers, userData } = useSelector((state) => state.user);
   const dispatch = useDispatch();
   const displayName = userData?.name || userData?.userName || "Friend";
+  const [theme, setTheme] = useThemePreference();
 
   const [mode, setMode] = useState("post");
   const [caption, setCaption] = useState("");
@@ -1127,6 +1157,12 @@ function Feed() {
           setMobileMessages((current) =>
             current.map((item) => (item._id === data.message._id ? data.message : item))
           );
+          return;
+        }
+
+        if (data.type === "messages:delivered") {
+          markMobileMessagesDelivered(data.messageIds, data.deliveredAt);
+          fetchMobileChatUsers();
           return;
         }
 
@@ -2160,6 +2196,18 @@ function Feed() {
     );
   };
 
+  const markMobileMessagesDelivered = (messageIds, deliveredAt) => {
+    const deliveredIds = new Set((messageIds || []).map((id) => id.toString()));
+
+    setMobileMessages((current) =>
+      current.map((message) =>
+        deliveredIds.has(message._id?.toString())
+          ? { ...message, delivered: true, deliveredAt }
+          : message
+      )
+    );
+  };
+
   const handleMobileFollow = async (targetUser) => {
     setMobileBusyUserId(targetUser._id);
     setMobileChatStatus("");
@@ -2657,15 +2705,6 @@ function Feed() {
         : true
     )
     .slice(0, 20);
-  const lastOwnSeenMobileMessageId = [...mobileMessages]
-    .reverse()
-    .find(
-      (chatMessage) =>
-        chatMessage.sender?._id === userData?._id &&
-        chatMessage.read &&
-        !chatMessage.pending &&
-        !chatMessage.failed
-    )?._id;
   const totalMobileUnreadCount = mobileChatUsers.reduce(
     (total, chatUser) =>
       total + (selectedMobileChat?._id === chatUser._id ? 0 : chatUser.unreadCount || 0),
@@ -3875,14 +3914,10 @@ function Feed() {
                           {renderChatMessageMedia(chatMessage)}
                           {renderSharedContentCard(chatMessage)}
                           {renderChatMessageReactions(chatMessage)}
-                          {chatMessage.pending ? (
-                            <p className="mt-1 text-[10px] text-white/70">Sending...</p>
-                          ) : null}
                           {chatMessage.failed ? (
                             <p className="mt-1 text-[10px] text-white/80">Not sent</p>
-                          ) : null}
-                          {chatMessage._id === lastOwnSeenMobileMessageId ? (
-                            <p className="mt-1 text-[10px] text-white/80">Seen</p>
+                          ) : mine ? (
+                            <MessageStatusTicks message={chatMessage} />
                           ) : null}
                           {!chatMessage.pending && !chatMessage.failed ? (
                             <>
@@ -5060,6 +5095,34 @@ function Feed() {
                 className="h-11 rounded-md bg-[#111] border border-gray-800 px-3 text-white outline-none"
                 required
               />
+
+              <div className="border-t border-gray-900 pt-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="w-10 h-10 rounded-full bg-[#111] flex items-center justify-center text-lg shrink-0">
+                      {theme === "light" ? <FiSun /> : <FiMoon />}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-sm">Bright mode</p>
+                      <p className="text-xs text-gray-500 truncate">Switch Vybe between dark and bright.</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+                    className={`w-12 h-7 rounded-full p-1 transition-colors ${
+                      theme === "light" ? "bg-blue-600" : "bg-gray-700"
+                    }`}
+                    aria-pressed={theme === "light"}
+                  >
+                    <span
+                      className={`block w-5 h-5 rounded-full bg-white transition-transform ${
+                        theme === "light" ? "translate-x-5" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
 
               <div className="border-t border-gray-900 pt-4 flex flex-col gap-3">
                 <button

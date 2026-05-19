@@ -13,13 +13,16 @@ import {
   FiLock,
   FiLogOut,
   FiMessageCircle,
+  FiMoon,
   FiPlusSquare,
   FiSave,
   FiSettings,
+  FiSun,
   FiUser,
   FiX,
 } from "react-icons/fi";
 import { FaRegHeart } from "react-icons/fa6";
+import { useThemePreference } from "../utils/theme";
 
 const MAX_AVATAR_SIZE = 3 * 1024 * 1024;
 
@@ -34,6 +37,7 @@ const readFileAsDataUrl = (file) =>
 function LeftHome() {
   const { userData } = useSelector((state) => state.user);
   const dispatch = useDispatch();
+  const [theme, setTheme] = useThemePreference();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [name, setName] = useState("");
@@ -373,6 +377,13 @@ function LeftHome() {
                   description="Store your privacy preference for this device."
                   checked={privateAccount}
                   onChange={setPrivateAccount}
+                />
+                <SettingToggle
+                  icon={theme === "light" ? <FiSun /> : <FiMoon />}
+                  title="Bright mode"
+                  description="Switch Vybe between dark and bright appearance."
+                  checked={theme === "light"}
+                  onChange={(checked) => setTheme(checked ? "light" : "dark")}
                 />
               </div>
 

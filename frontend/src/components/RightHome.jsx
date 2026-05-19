@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import dp from "../assets/dp.png";
 import { apiUrl, mediaUrl } from "../config/api";
 import { setSuggestedUsers, setUserData } from "../redux/userSlice";
-import { FiChevronLeft, FiChevronRight, FiDownload, FiImage, FiMessageCircle, FiMoreVertical, FiSearch, FiSend, FiSmile, FiVideo, FiX } from "react-icons/fi";
+import { FiCheck, FiChevronLeft, FiChevronRight, FiDownload, FiImage, FiMessageCircle, FiMoreVertical, FiSearch, FiSend, FiSmile, FiVideo, FiX } from "react-icons/fi";
 import { getTabAuthHeaders, withTabAuth } from "../utils/tabAuth";
 import { downloadMediaFile } from "../utils/mediaDownload";
 
@@ -66,6 +66,34 @@ const getMessageClientId = (message) => message?.clientId || "";
 const getMessageReplyId = (message) => message?.replyTo?.messageId || "";
 const isSameId = (left, right) =>
   Boolean(left && right) && left.toString() === right.toString();
+const MessageStatusTicks = ({ message }) => {
+  if (!message || message.failed) return null;
+
+  if (message.pending) {
+    return (
+      <span className="mt-1 flex justify-end text-[10px] font-medium text-white/70">
+        Sending...
+      </span>
+    );
+  }
+
+  const seen = Boolean(message.read);
+  const delivered = seen || Boolean(message.delivered);
+  const label = seen ? "Seen" : delivered ? "Delivered" : "Sent";
+
+  return (
+    <span
+      className={`mt-1 flex items-center justify-end text-[13px] ${
+        seen ? "text-sky-300" : "text-white/70"
+      }`}
+      aria-label={label}
+      title={label}
+    >
+      <FiCheck />
+      {delivered ? <FiCheck className="-ml-1.5" /> : null}
+    </span>
+  );
+};
 const hasMatchingPendingMessage = (pendingMessage, confirmedMessage) => {
   if (!pendingMessage?.pending || !confirmedMessage?._id) return false;
 
@@ -470,6 +498,18 @@ function RightHome() {
     );
   };
 
+  const markMessagesDelivered = (messageIds, deliveredAt) => {
+    const deliveredIds = new Set((messageIds || []).map((id) => id.toString()));
+
+    setMessages((current) =>
+      current.map((message) =>
+        deliveredIds.has(message._id?.toString())
+          ? { ...message, delivered: true, deliveredAt }
+          : message
+      )
+    );
+  };
+
   const fetchChatUsers = async () => {
     try {
       const res = await fetch(apiUrl("/api/chat/users"), {
@@ -588,6 +628,12 @@ function RightHome() {
 
         if (data.type === "message:reaction") {
           updateMessage(data.message);
+          return;
+        }
+
+        if (data.type === "messages:delivered") {
+          markMessagesDelivered(data.messageIds, data.deliveredAt);
+          fetchChatUsers();
           return;
         }
 
@@ -934,16 +980,6 @@ function RightHome() {
         return users;
       }, [])
     : chatUsers;
-  const lastOwnSeenMessageId = [...messages]
-    .reverse()
-    .find(
-      (message) =>
-        message.sender?._id === userData?._id &&
-        message.read &&
-        !message.pending &&
-        !message.failed
-    )?._id;
-
   const renderSharedContentCard = (message) => {
     const sharedItem = sharedContentToFeedItem(message.sharedContent);
     if (!sharedItem) return null;
@@ -1408,14 +1444,10 @@ function RightHome() {
                         {renderMessageMedia(message)}
                         {renderSharedContentCard(message)}
                         {renderMessageReactions(message)}
-                        {message.pending ? (
-                          <p className="mt-1 text-[10px] text-white/70">Sending...</p>
-                        ) : null}
                         {message.failed ? (
                           <p className="mt-1 text-[10px] text-white/80">Not sent</p>
-                        ) : null}
-                        {message._id === lastOwnSeenMessageId ? (
-                          <p className="mt-1 text-[10px] text-white/80">Seen</p>
+                        ) : mine ? (
+                          <MessageStatusTicks message={message} />
                         ) : null}
                       </div>
 
