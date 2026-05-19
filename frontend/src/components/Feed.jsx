@@ -4138,6 +4138,11 @@ function Feed() {
             const itemLiked = item.likes?.some((id) => id.toString() === userData?._id);
             const likePending = pendingLikeIds.has(contentKey);
             const deletePending = pendingContentDeleteIds.has(contentKey);
+            const authorId = item.author?._id?.toString();
+            const isOwnAuthor = Boolean(authorId && authorId === userData?._id?.toString());
+            const authorFollowsMe = authorId ? mobileFollowerIds.has(authorId) : false;
+            const authorIsFollowing = authorId ? mobileFollowingIds.has(authorId) : false;
+            const showAuthorFollow = Boolean(authorId && !isOwnAuthor && !authorIsFollowing);
 
             return (
             <article
@@ -4149,27 +4154,52 @@ function Feed() {
               }
             >
               <div className="flex items-center justify-between px-4 py-3">
-                <button
-                  type="button"
-                  onClick={() => openProfile(item.author)}
-                  className="flex items-center gap-3 min-w-0 text-left"
-                >
-                  <img
-                    src={mediaUrl(item.author?.profileImage) || dp}
-                    alt="profile"
-                    className="w-10 h-10 rounded-full object-cover"
-                    onError={(event) => {
-                      event.currentTarget.src = dp;
-                    }}
-                  />
-                  <div className="min-w-0">
-                    <p className="text-white font-semibold truncate">{item.author?.userName || "vybe_user"}</p>
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => openProfile(item.author)}
+                    className="shrink-0"
+                    aria-label={`Open ${item.author?.userName || "user"} profile`}
+                  >
+                    <img
+                      src={mediaUrl(item.author?.profileImage) || dp}
+                      alt="profile"
+                      className="w-10 h-10 rounded-full object-cover"
+                      onError={(event) => {
+                        event.currentTarget.src = dp;
+                      }}
+                    />
+                  </button>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openProfile(item.author)}
+                        className="min-w-0 truncate text-left font-semibold text-white hover:text-gray-300"
+                      >
+                        {item.author?.userName || "vybe_user"}
+                      </button>
+                      {showAuthorFollow ? (
+                        <button
+                          type="button"
+                          onClick={() => handleFeedUserFollow(item.author)}
+                          disabled={feedUserBusyId === authorId}
+                          className="shrink-0 rounded-md bg-white px-3 py-1 text-xs font-semibold text-black transition hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {feedUserBusyId === authorId
+                            ? "..."
+                            : authorFollowsMe
+                              ? "Follow Back"
+                              : "Follow"}
+                        </button>
+                      ) : null}
+                    </div>
                     <p className="text-gray-500 text-xs truncate">
                       {item.type === "reel" ? "Reel" : "Post"} · {formatContentTime(item.createdAt, storyClock)}
                     </p>
                   </div>
-                </button>
-                {item.author?._id === userData?._id ? (
+                </div>
+                {isOwnAuthor ? (
                   <button
                     type="button"
                     onClick={() => handleDeleteContent(item)}
