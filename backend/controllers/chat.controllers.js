@@ -236,7 +236,18 @@ export const chatEvents = (req, res) => {
   res.flush?.();
   broadcastPresence();
 
+  const heartbeat = setInterval(() => {
+    try {
+      res.write(": ping\n\n");
+      res.flush?.();
+    } catch {
+      clearInterval(heartbeat);
+    }
+  }, 25000);
+  heartbeat.unref?.();
+
   req.on("close", () => {
+    clearInterval(heartbeat);
     removeClient(req.userId, res);
     broadcastPresence();
   });

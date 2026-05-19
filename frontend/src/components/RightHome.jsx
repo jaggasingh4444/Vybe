@@ -442,7 +442,7 @@ function RightHome() {
     }
   };
 
-  const fetchMessages = async (userId) => {
+  const fetchMessages = async (userId, options = {}) => {
     try {
       const res = await fetch(apiUrl(`/api/chat/${userId}/messages`), {
         credentials: "include",
@@ -454,7 +454,9 @@ function RightHome() {
       const data = await res.json();
       setMessages((current) => mergeServerMessagesIntoList(current, data));
     } catch {
-      setStatus("Unable to load messages.");
+      if (!options.silent) {
+        setStatus("Unable to load messages.");
+      }
     }
   };
 
@@ -589,7 +591,7 @@ function RightHome() {
           mergeMessage(incoming);
 
           if (incoming.receiver?._id === currentUserId) {
-            fetchMessages(selectedId);
+            fetchMessages(selectedId, { silent: true });
           }
         }
 
@@ -605,6 +607,25 @@ function RightHome() {
 
     return () => events.close();
   }, [isDesktop, setTypingIndicator, userData?._id]);
+
+  useEffect(() => {
+    if (!isDesktop || !selectedChat?._id) return undefined;
+
+    let stopped = false;
+    const syncOpenChat = () => {
+      if (stopped || document.visibilityState !== "visible") return;
+      fetchMessages(selectedChat._id, { silent: true });
+    };
+
+    const firstSync = window.setTimeout(syncOpenChat, 500);
+    const interval = window.setInterval(syncOpenChat, 1200);
+
+    return () => {
+      stopped = true;
+      window.clearTimeout(firstSync);
+      window.clearInterval(interval);
+    };
+  }, [isDesktop, selectedChat?._id]);
 
   useEffect(() => {
     selectedChatRef.current = selectedChat;
@@ -625,7 +646,7 @@ function RightHome() {
   }, [stopOutgoingTyping]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
   }, [messages, selectedChatTyping]);
 
   useEffect(() => {
@@ -771,7 +792,7 @@ function RightHome() {
 
       saveConfirmedMessage(data, tempId);
       setChatEmojiOpen(false);
-      await fetchChatUsers();
+      fetchChatUsers();
     } catch (error) {
       markMessageFailed(tempId);
       setStatus(error.message || "Message failed.");

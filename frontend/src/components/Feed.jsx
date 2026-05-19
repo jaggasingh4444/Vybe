@@ -831,7 +831,7 @@ function Feed() {
     }
   };
 
-  const fetchMobileMessages = async (userId) => {
+  const fetchMobileMessages = async (userId, options = {}) => {
     try {
       const res = await fetch(apiUrl(`/api/chat/${userId}/messages`), {
         credentials: "include",
@@ -843,7 +843,9 @@ function Feed() {
       const data = await res.json();
       setMobileMessages((current) => mergeServerMessagesIntoList(current, data));
     } catch {
-      setMobileChatStatus("Unable to load messages.");
+      if (!options.silent) {
+        setMobileChatStatus("Unable to load messages.");
+      }
     }
   };
 
@@ -1052,7 +1054,7 @@ function Feed() {
           setMobileMessages((current) => mergeMessageIntoList(current, incoming));
 
           if (incoming.receiver?._id === currentUserId) {
-            fetchMobileMessages(selectedId);
+            fetchMobileMessages(selectedId, { silent: true });
           }
         }
 
@@ -1068,6 +1070,25 @@ function Feed() {
 
     return () => events.close();
   }, [isMobile, selectedMobileChat?._id, setMobileTypingIndicator, userData?._id]);
+
+  useEffect(() => {
+    if (!isMobile || activeMobileTab !== "chat" || !selectedMobileChat?._id) return undefined;
+
+    let stopped = false;
+    const syncOpenChat = () => {
+      if (stopped || document.visibilityState !== "visible") return;
+      fetchMobileMessages(selectedMobileChat._id, { silent: true });
+    };
+
+    const firstSync = window.setTimeout(syncOpenChat, 500);
+    const interval = window.setInterval(syncOpenChat, 1200);
+
+    return () => {
+      stopped = true;
+      window.clearTimeout(firstSync);
+      window.clearInterval(interval);
+    };
+  }, [activeMobileTab, isMobile, selectedMobileChat?._id]);
 
   useEffect(() => {
     const handleSidebarAction = (event) => {
@@ -1114,7 +1135,7 @@ function Feed() {
 
     messagesList.scrollTo({
       top: messagesList.scrollHeight,
-      behavior: "smooth",
+      behavior: "auto",
     });
   }, [mobileMessages, selectedMobileChat?._id, selectedMobileChatTyping]);
 
@@ -2322,7 +2343,7 @@ function Feed() {
 
       saveConfirmedMobileMessage(data, tempId);
       setMobileChatEmojiOpen(false);
-      await fetchMobileChatUsers();
+      fetchMobileChatUsers();
     } catch (error) {
       markMobileMessageFailed(tempId);
       setMobileChatStatus(error.message || "Message failed.");
