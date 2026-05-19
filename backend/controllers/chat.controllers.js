@@ -68,6 +68,17 @@ const getIdString = (value) => value?._id?.toString?.() || value?.toString?.() |
 const isMessageParticipant = (message, userId) =>
   [getIdString(message.sender), getIdString(message.receiver)].includes(userId);
 
+const areMutualConnections = (currentUser, otherUserId) => {
+  const otherId = otherUserId.toString();
+  const followers = currentUser?.followers || [];
+  const following = currentUser?.following || [];
+
+  return (
+    followers.some((id) => id.toString() === otherId) &&
+    following.some((id) => id.toString() === otherId)
+  );
+};
+
 const persistLegacyProfileImage = async (user, req) => {
   if (!user || !isDataUrl(user.profileImage)) return user;
 
@@ -505,6 +516,15 @@ export const sendMessage = async (req, res) => {
 
     if (!text && !sharedContent && !hasMedia) {
       return res.status(400).json({ message: "Message cannot be empty" });
+    }
+
+    const currentUser = await User.findById(req.userId).select("followers following");
+    if (!currentUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (sharedContent && !areMutualConnections(currentUser, receiverId)) {
+      return res.status(403).json({ message: "You can share only with connected users" });
     }
 
     const receiver = await User.findById(receiverId).select("_id");

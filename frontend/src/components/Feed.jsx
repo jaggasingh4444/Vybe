@@ -2743,7 +2743,7 @@ function Feed() {
       }, [])
     : mobileChatUsers;
   const shareCandidateMap = new Map();
-  [...mobileChatUsers, ...shareUsers, ...suggestedUsers].forEach((candidate) => {
+  shareUsers.forEach((candidate) => {
     if (!candidate?._id || candidate._id === userData?._id) return;
     shareCandidateMap.set(candidate._id, {
       ...shareCandidateMap.get(candidate._id),
