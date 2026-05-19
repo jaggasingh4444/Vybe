@@ -8,6 +8,7 @@ import { useDispatch } from "react-redux";
 import { setUserData } from "../redux/userSlice";
 import { apiUrl } from "../config/api";
 import { setTabAuthToken } from "../utils/tabAuth";
+import { resetThemeForPublicPages } from "../utils/theme";
 
 function SignIn() {
   const navigate = useNavigate(); // only for signup / forgot links
@@ -31,6 +32,8 @@ function SignIn() {
   });
 
   useEffect(() => {
+    resetThemeForPublicPages();
+
     const inputs = document.querySelectorAll("input");
     inputs.forEach((input) => {
       if (input.value) {

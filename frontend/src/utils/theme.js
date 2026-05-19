@@ -21,6 +21,10 @@ export const applyTheme = (theme, active = true) => {
   document.documentElement.style.colorScheme = isLight ? "light" : "dark";
 };
 
+export const resetThemeForPublicPages = () => {
+  applyTheme("dark", false);
+};
+
 export const setStoredTheme = (theme) => {
   if (typeof window === "undefined") return;
 

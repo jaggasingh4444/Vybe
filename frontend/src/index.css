@@ -5,7 +5,6 @@ body {
   background: #000;
 }
 
-html.vybe-light,
 body.vybe-theme-active.vybe-light {
   background: #f4f6fb;
   color: #111827;

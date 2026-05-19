@@ -1,9 +1,10 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ClipLoader } from 'react-spinners'
 import { IoIosEye, IoIosEyeOff } from "react-icons/io"
 import axios from 'axios'
 import { apiUrl } from '../config/api'
+import { resetThemeForPublicPages } from '../utils/theme'
 
 function ForgotPassword() {
   const navigate = useNavigate()
@@ -30,6 +31,10 @@ function ForgotPassword() {
   
   // Toast notification
   const [toast, setToast] = useState({ show: false, message: "", type: "" })
+
+  useEffect(() => {
+    resetThemeForPublicPages()
+  }, [])
   
   const showToast = (message, type) => {
     setToast({ show: true, message, type })

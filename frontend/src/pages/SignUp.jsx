@@ -5,6 +5,7 @@ import logo1 from "../assets/logo1.png";
 import { IoIosEye, IoIosEyeOff } from "react-icons/io";
 import { ClipLoader } from "react-spinners";
 import { apiUrl } from "../config/api";
+import { resetThemeForPublicPages } from "../utils/theme";
 
 function SignUp() {
   const navigate = useNavigate();
@@ -38,6 +39,8 @@ function SignUp() {
   });
 
   useEffect(() => {
+    resetThemeForPublicPages();
+
     const inputs = document.querySelectorAll("input");
     inputs.forEach((input) => {
       if (input.value) {
