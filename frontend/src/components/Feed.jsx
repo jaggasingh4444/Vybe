@@ -573,7 +573,10 @@ function Feed() {
   const mobileMessagesRef = useRef([]);
   const mobileMessageSyncingRef = useRef(false);
   const mobileMessagesListRef = useRef(null);
+  const mobileMessageInputRef = useRef(null);
   const mobileMessageMediaInputRef = useRef(null);
+  const mobileKeepKeyboardAfterSendRef = useRef(false);
+  const mobileSendPointerHandledRef = useRef(false);
   const mobileOutgoingTypingRef = useRef({ receiverId: "", active: false, lastSentAt: 0 });
   const mobileStopTypingTimeoutRef = useRef(null);
   const mobileIncomingTypingTimeoutsRef = useRef(new Map());
@@ -603,6 +606,18 @@ function Feed() {
   const selectedMobileChatTyping = Boolean(
     selectedMobileChat?._id && mobileTypingUserIds.has(selectedMobileChat._id)
   );
+  const focusMobileMessageInput = useCallback(() => {
+    if (!isMobile || activeMobileTab !== "chat" || !selectedMobileChat?._id) return;
+
+    window.requestAnimationFrame(() => {
+      try {
+        mobileMessageInputRef.current?.focus({ preventScroll: true });
+      } catch {
+        mobileMessageInputRef.current?.focus();
+      }
+      setMobileKeyboardOpen(true);
+    });
+  }, [activeMobileTab, isMobile, selectedMobileChat?._id]);
 
   useEffect(() => {
     if (!shouldAutoDismissStatus(message)) return undefined;
@@ -2573,12 +2588,17 @@ function Feed() {
     }
   };
 
-  const sendMobileMessage = async (event) => {
-    event.preventDefault();
+  const submitMobileMessage = async () => {
     const text = mobileMessageText.trim();
     const mediaPayload = mobileMessageMedia;
     const replyTarget = mobileReplyToMessage;
     if ((!text && mediaPayload.length === 0) || !selectedMobileChat) return;
+
+    mobileKeepKeyboardAfterSendRef.current = true;
+    focusMobileMessageInput();
+    window.setTimeout(() => {
+      mobileKeepKeyboardAfterSendRef.current = false;
+    }, 700);
 
     const receiver = selectedMobileChat;
     const clientId = `client-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -2604,6 +2624,7 @@ function Feed() {
     setMobileMessageMenuId("");
     setMobileChatStatus("");
     stopMobileOutgoingTyping(receiver._id);
+    focusMobileMessageInput();
 
     try {
       if (mediaPayload.length > 0) {
@@ -2636,13 +2657,36 @@ function Feed() {
       setMobileChatEmojiOpen(false);
       setMobileChatStatus("");
       fetchMobileChatUsers();
+      focusMobileMessageInput();
     } catch (error) {
       markMobileMessageFailed(tempId);
       setMobileChatStatus(error.message || "Message failed.");
       setMobileMessageText(text);
       setMobileMessageMedia(mediaPayload);
       setMobileReplyToMessage(replyTarget);
+      focusMobileMessageInput();
     }
+  };
+
+  const sendMobileMessage = (event) => {
+    event.preventDefault();
+    void submitMobileMessage();
+  };
+
+  const handleMobileSendPointerDown = (event) => {
+    if (!mobileMessageText.trim() && mobileMessageMedia.length === 0) return;
+
+    event.preventDefault();
+    mobileSendPointerHandledRef.current = true;
+    window.setTimeout(() => {
+      mobileSendPointerHandledRef.current = false;
+    }, 500);
+    void submitMobileMessage();
+  };
+
+  const handleMobileSendClick = () => {
+    if (mobileSendPointerHandledRef.current) return;
+    void submitMobileMessage();
   };
 
   const deleteMobileMessage = async (messageId, scope = "me") => {
@@ -4201,6 +4245,7 @@ function Feed() {
                     <FiImage />
                   </button>
                   <input
+                    ref={mobileMessageInputRef}
                     value={mobileMessageText}
                     onChange={handleMobileMessageTextChange}
                     onFocus={() => {
@@ -4212,14 +4257,28 @@ function Feed() {
                     }}
                     onBlur={() => {
                       stopMobileOutgoingTyping(selectedMobileChat?._id);
-                      window.setTimeout(() => setMobileKeyboardOpen(false), 160);
+                      window.setTimeout(() => {
+                        if (mobileKeepKeyboardAfterSendRef.current) {
+                          try {
+                            mobileMessageInputRef.current?.focus({ preventScroll: true });
+                          } catch {
+                            mobileMessageInputRef.current?.focus();
+                          }
+                          setMobileKeyboardOpen(true);
+                          return;
+                        }
+
+                        setMobileKeyboardOpen(false);
+                      }, 160);
                     }}
                     placeholder="Message..."
                     className="min-w-0 flex-1 h-11 rounded-md bg-[#111] text-white px-3 outline-none placeholder:text-gray-600"
                     maxLength={1000}
                   />
                   <button
-                    type="submit"
+                    type="button"
+                    onPointerDown={handleMobileSendPointerDown}
+                    onClick={handleMobileSendClick}
                     className="w-11 h-11 rounded-md bg-white text-black flex items-center justify-center disabled:opacity-50"
                     disabled={!mobileMessageText.trim() && mobileMessageMedia.length === 0}
                     aria-label="Send message"
