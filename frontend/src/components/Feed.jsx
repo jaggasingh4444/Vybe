@@ -530,6 +530,7 @@ function Feed() {
   const [mobileTypingUserIds, setMobileTypingUserIds] = useState(() => new Set());
   const [mobileBusyUserId, setMobileBusyUserId] = useState("");
   const [mobileConversationMenuOpen, setMobileConversationMenuOpen] = useState(false);
+  const [mobileChatListMenuUserId, setMobileChatListMenuUserId] = useState("");
   const [mobileChatViewportHeight, setMobileChatViewportHeight] = useState(0);
   const [mobileKeyboardOpen, setMobileKeyboardOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(() =>
@@ -616,6 +617,7 @@ function Feed() {
   const mobileKeepKeyboardAfterSendRef = useRef(false);
   const mobileSendPointerHandledRef = useRef(false);
   const mobileMessageHoldRef = useRef({ timer: null, x: 0, y: 0 });
+  const mobileChatListHoldRef = useRef({ timer: null, x: 0, y: 0, suppressClickUntil: 0 });
   const mobileOutgoingTypingRef = useRef({ receiverId: "", active: false, lastSentAt: 0 });
   const mobileStopTypingTimeoutRef = useRef(null);
   const mobileIncomingTypingTimeoutsRef = useRef(new Map());
@@ -701,6 +703,9 @@ function Feed() {
     () => () => {
       if (mobileMessageHoldRef.current.timer) {
         window.clearTimeout(mobileMessageHoldRef.current.timer);
+      }
+      if (mobileChatListHoldRef.current.timer) {
+        window.clearTimeout(mobileChatListHoldRef.current.timer);
       }
     },
     []
@@ -2989,6 +2994,56 @@ function Feed() {
     }
   };
 
+  const clearMobileChatListHold = () => {
+    if (mobileChatListHoldRef.current.timer) {
+      window.clearTimeout(mobileChatListHoldRef.current.timer);
+      mobileChatListHoldRef.current.timer = null;
+    }
+  };
+
+  const openMobileChatListActions = (chatUser) => {
+    if (!chatUser?._id) return;
+    clearMobileChatListHold();
+    mobileChatListHoldRef.current.suppressClickUntil = Date.now() + 700;
+    setMobileChatListMenuUserId(chatUser._id);
+  };
+
+  const startMobileChatListHold = (event, chatUser) => {
+    const target = event.target;
+    if (target instanceof Element && target.closest("[data-mobile-chat-direct-action],input")) {
+      return;
+    }
+    if (!chatUser?._id) return;
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+
+    clearMobileChatListHold();
+    mobileChatListHoldRef.current.x = event.clientX;
+    mobileChatListHoldRef.current.y = event.clientY;
+    mobileChatListHoldRef.current.timer = window.setTimeout(() => {
+      openMobileChatListActions(chatUser);
+    }, 420);
+  };
+
+  const moveMobileChatListHold = (event) => {
+    const hold = mobileChatListHoldRef.current;
+    if (!hold.timer) return;
+
+    const movedX = Math.abs(event.clientX - hold.x);
+    const movedY = Math.abs(event.clientY - hold.y);
+    if (movedX > 10 || movedY > 10) {
+      clearMobileChatListHold();
+    }
+  };
+
+  const shouldSkipMobileChatListClick = () => {
+    if (Date.now() < mobileChatListHoldRef.current.suppressClickUntil) {
+      mobileChatListHoldRef.current.suppressClickUntil = 0;
+      return true;
+    }
+
+    return false;
+  };
+
   const deleteMobileMessage = async (messageId, scope = "me") => {
     try {
       const res = await fetch(apiUrl(`/api/chat/messages/${messageId}?scope=${scope}`), {
@@ -3043,11 +3098,21 @@ function Feed() {
 
       if (!res.ok) throw new Error(data.message || "Delete failed");
 
-      setMobileMessages([]);
-      setSelectedMobileChat(null);
+      setMobileChatUsers((currentUsers) =>
+        currentUsers.filter((chatUser) => !isSameId(chatUser._id, userId))
+      );
+      if (isSameId(selectedMobileChat?._id, userId)) {
+        setMobileMessages([]);
+        setSelectedMobileChat(null);
+        selectedMobileChatRef.current = null;
+      }
       setMobileConversationMenuOpen(false);
+      setMobileChatListMenuUserId("");
       setMobileChatStatus("Conversation deleted.");
       await fetchMobileChatUsers();
+      setMobileChatUsers((currentUsers) =>
+        currentUsers.filter((chatUser) => !isSameId(chatUser._id, userId))
+      );
     } catch (error) {
       setMobileChatStatus(error.message || "Delete failed.");
     }
@@ -3148,6 +3213,11 @@ function Feed() {
       total + (selectedMobileChat?._id === chatUser._id ? 0 : chatUser.unreadCount || 0),
     0
   );
+  const activeMobileChatListUser = mobileChatListMenuUserId
+    ? visibleMobileChatUsers.find((chatUser) => chatUser._id === mobileChatListMenuUserId) ||
+      mobileChatUsers.find((chatUser) => chatUser._id === mobileChatListMenuUserId) ||
+      mobileChatSearchResults.find((chatUser) => chatUser._id === mobileChatListMenuUserId)
+    : null;
   const activeProfileUser = profileData?.user;
   const activeProfileContent = profileData?.content || [];
   const visibleProfileContent = profileContentType === "all"
@@ -4572,11 +4642,27 @@ function Feed() {
                       return (
                         <div
                           key={chatUser._id}
-                          className="min-h-16 rounded-lg bg-[#080808] border border-gray-900 px-3 py-2 flex items-center gap-3"
+                          onPointerDown={(event) => startMobileChatListHold(event, chatUser)}
+                          onPointerMove={moveMobileChatListHold}
+                          onPointerUp={clearMobileChatListHold}
+                          onPointerLeave={clearMobileChatListHold}
+                          onPointerCancel={clearMobileChatListHold}
+                          onContextMenu={(event) => {
+                            event.preventDefault();
+                            openMobileChatListActions(chatUser);
+                          }}
+                          className={`min-h-16 select-none rounded-lg border px-3 py-2 flex items-center gap-3 transition ${
+                            mobileChatListMenuUserId === chatUser._id
+                              ? "border-white/20 bg-[#111]"
+                              : "border-gray-900 bg-[#080808]"
+                          }`}
                         >
                           <button
                             type="button"
-                            onClick={() => openProfile(chatUser)}
+                            onClick={() => {
+                              if (shouldSkipMobileChatListClick()) return;
+                              openProfile(chatUser);
+                            }}
                             className="relative shrink-0"
                             aria-label={`Open ${chatUser.userName} profile`}
                           >
@@ -4594,7 +4680,10 @@ function Feed() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => openMobileChat(chatUser)}
+                            onClick={() => {
+                              if (shouldSkipMobileChatListClick()) return;
+                              openMobileChat(chatUser);
+                            }}
                             className="min-w-0 flex-1 text-left"
                           >
                             <div className="min-w-0">
@@ -4617,6 +4706,7 @@ function Feed() {
                           {showFollowBack ? (
                             <button
                               type="button"
+                              data-mobile-chat-direct-action
                               onClick={() => handleMobileFollow(chatUser)}
                               disabled={mobileBusyUserId === chatUser._id}
                               className="h-9 px-3 rounded-md bg-white text-black text-sm font-semibold disabled:opacity-60"
@@ -5770,6 +5860,82 @@ function Feed() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      ) : null}
+
+      {activeMobileChatListUser ? (
+        <div
+          className="fixed inset-0 z-50 flex items-end bg-black/45 lg:hidden"
+          onClick={() => setMobileChatListMenuUserId("")}
+        >
+          <div
+            className="w-full rounded-t-[28px] border-t border-gray-800 bg-[#070707] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 text-white shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-gray-700" />
+
+            <div className="mb-3 flex items-center gap-3 rounded-3xl border border-gray-900 bg-[#101010] p-3">
+              <img
+                src={mediaUrl(activeMobileChatListUser.profileImage) || dp}
+                alt={activeMobileChatListUser.userName}
+                className="h-12 w-12 rounded-full object-cover"
+                onError={(event) => {
+                  event.currentTarget.src = dp;
+                }}
+              />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-white">
+                  {activeMobileChatListUser.userName}
+                </p>
+                <p className="truncate text-xs text-gray-500">
+                  {getChatPreviewText(activeMobileChatListUser, "Conversation options")}
+                </p>
+              </div>
+            </div>
+
+            <div className="overflow-hidden rounded-3xl border border-gray-900 bg-[#101010]">
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileChatListMenuUserId("");
+                  openMobileChat(activeMobileChatListUser);
+                }}
+                className="flex h-12 w-full items-center justify-between px-4 text-left text-sm font-semibold text-white active:bg-white/5"
+              >
+                <span>Open chat</span>
+                <FiMessageCircle className="text-gray-400" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileChatListMenuUserId("");
+                  openProfile(activeMobileChatListUser);
+                }}
+                className="flex h-12 w-full items-center justify-between border-t border-gray-900 px-4 text-left text-sm font-semibold text-white active:bg-white/5"
+              >
+                <span>View profile</span>
+                <FiUser className="text-gray-400" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => deleteMobileConversation(activeMobileChatListUser._id)}
+                className="flex h-12 w-full items-center justify-between border-t border-gray-900 px-4 text-left text-sm font-semibold text-red-300 active:bg-red-500/10"
+              >
+                <span>Delete conversation</span>
+                <FiTrash2 className="text-red-300" />
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setMobileChatListMenuUserId("")}
+              className="mt-3 h-11 w-full rounded-2xl bg-[#151515] text-sm font-semibold text-gray-200 active:bg-[#202020]"
+            >
+              Cancel
+            </button>
           </div>
         </div>
       ) : null}
