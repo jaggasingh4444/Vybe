@@ -610,6 +610,7 @@ function Feed() {
   const selectedMobileChatRef = useRef(null);
   const mobileMessagesRef = useRef([]);
   const mobileMessageSyncingRef = useRef(false);
+  const mobileChatUsersSyncingRef = useRef(false);
   const mobileMessagesListRef = useRef(null);
   const mobileMessageInputRef = useRef(null);
   const mobileMessageMediaInputRef = useRef(null);
@@ -1061,7 +1062,7 @@ function Feed() {
     }
   };
 
-  const fetchMobileChatUsers = async () => {
+  const fetchMobileChatUsers = async (options = {}) => {
     try {
       const res = await fetch(apiUrl("/api/chat/users"), {
         credentials: "include",
@@ -1073,7 +1074,9 @@ function Feed() {
       const data = await res.json();
       setMobileChatUsers(data);
     } catch {
-      setMobileChatStatus("Unable to load chats.");
+      if (!options.silent) {
+        setMobileChatStatus("Unable to load chats.");
+      }
     }
   };
 
@@ -1427,6 +1430,38 @@ function Feed() {
       window.clearInterval(interval);
     };
   }, [activeMobileTab, isMobile, selectedMobileChat?._id]);
+
+  useEffect(() => {
+    if (!userData?._id || !isMobile || activeMobileTab !== "chat") return undefined;
+
+    let stopped = false;
+    const syncMobileChatList = () => {
+      if (stopped || document.visibilityState !== "visible") return;
+      if (mobileChatUsersSyncingRef.current) return;
+
+      mobileChatUsersSyncingRef.current = true;
+      fetchMobileChatUsers({ silent: true }).finally(() => {
+        mobileChatUsersSyncingRef.current = false;
+      });
+    };
+
+    const firstSync = window.setTimeout(syncMobileChatList, 250);
+    const interval = window.setInterval(syncMobileChatList, 1000);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        syncMobileChatList();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      stopped = true;
+      window.clearTimeout(firstSync);
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [activeMobileTab, isMobile, userData?._id]);
 
   useEffect(() => {
     const handleSidebarAction = (event) => {

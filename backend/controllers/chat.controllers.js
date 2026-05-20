@@ -342,6 +342,8 @@ export const chatEvents = (req, res) => {
   res.setHeader("Cache-Control", "no-cache, no-transform");
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no");
+  res.socket?.setNoDelay?.(true);
+  req.socket?.setTimeout?.(0);
   res.flushHeaders?.();
 
   addClient(req.userId, res);

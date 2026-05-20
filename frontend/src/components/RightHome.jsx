@@ -302,6 +302,7 @@ function RightHome() {
   const openChatRef = useRef(null);
   const messagesEndRef = useRef(null);
   const mediaInputRef = useRef(null);
+  const chatUsersSyncingRef = useRef(false);
   const outgoingTypingRef = useRef({ receiverId: "", active: false, lastSentAt: 0 });
   const stopTypingTimeoutRef = useRef(null);
   const incomingTypingTimeoutsRef = useRef(new Map());
@@ -580,7 +581,7 @@ function RightHome() {
     );
   };
 
-  const fetchChatUsers = async () => {
+  const fetchChatUsers = async (options = {}) => {
     try {
       const res = await fetch(apiUrl("/api/chat/users"), {
         credentials: "include",
@@ -592,7 +593,9 @@ function RightHome() {
       const data = await res.json();
       setChatUsers(data);
     } catch {
-      setStatus("Unable to load chats.");
+      if (!options.silent) {
+        setStatus("Unable to load chats.");
+      }
     }
   };
 
@@ -809,6 +812,36 @@ function RightHome() {
       window.clearInterval(interval);
     };
   }, [isDesktop, selectedChat?._id]);
+
+  useEffect(() => {
+    if (!userData?._id || !isDesktop) return undefined;
+
+    let stopped = false;
+    const syncChatList = () => {
+      if (stopped || document.visibilityState !== "visible") return;
+      if (chatUsersSyncingRef.current) return;
+
+      chatUsersSyncingRef.current = true;
+      fetchChatUsers({ silent: true }).finally(() => {
+        chatUsersSyncingRef.current = false;
+      });
+    };
+
+    const interval = window.setInterval(syncChatList, 1000);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        syncChatList();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      stopped = true;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [isDesktop, userData?._id]);
 
   useEffect(() => {
     selectedChatRef.current = selectedChat;
