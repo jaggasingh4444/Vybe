@@ -615,6 +615,7 @@ function Feed() {
   const mobileMessageMediaInputRef = useRef(null);
   const mobileKeepKeyboardAfterSendRef = useRef(false);
   const mobileSendPointerHandledRef = useRef(false);
+  const mobileMessageHoldRef = useRef({ timer: null, x: 0, y: 0 });
   const mobileOutgoingTypingRef = useRef({ receiverId: "", active: false, lastSentAt: 0 });
   const mobileStopTypingTimeoutRef = useRef(null);
   const mobileIncomingTypingTimeoutsRef = useRef(new Map());
@@ -695,6 +696,15 @@ function Feed() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [chatMediaViewer]);
+
+  useEffect(
+    () => () => {
+      if (mobileMessageHoldRef.current.timer) {
+        window.clearTimeout(mobileMessageHoldRef.current.timer);
+      }
+    },
+    []
+  );
 
   const setMobileTypingIndicator = useCallback((senderId, typing) => {
     if (!senderId) return;
@@ -2941,6 +2951,44 @@ function Feed() {
     void submitMobileMessage();
   };
 
+  const clearMobileMessageHold = () => {
+    if (mobileMessageHoldRef.current.timer) {
+      window.clearTimeout(mobileMessageHoldRef.current.timer);
+      mobileMessageHoldRef.current.timer = null;
+    }
+  };
+
+  const openMobileMessageActions = (chatMessage) => {
+    if (chatMessage.pending || chatMessage.failed) return;
+    clearMobileMessageHold();
+    setMobileMessageMenuId(chatMessage._id);
+  };
+
+  const startMobileMessageHold = (event, chatMessage) => {
+    const target = event.target;
+    if (target instanceof Element && target.closest("button,a,input,video")) return;
+    if (chatMessage.pending || chatMessage.failed) return;
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+
+    clearMobileMessageHold();
+    mobileMessageHoldRef.current.x = event.clientX;
+    mobileMessageHoldRef.current.y = event.clientY;
+    mobileMessageHoldRef.current.timer = window.setTimeout(() => {
+      openMobileMessageActions(chatMessage);
+    }, 420);
+  };
+
+  const moveMobileMessageHold = (event) => {
+    const hold = mobileMessageHoldRef.current;
+    if (!hold.timer) return;
+
+    const movedX = Math.abs(event.clientX - hold.x);
+    const movedY = Math.abs(event.clientY - hold.y);
+    if (movedX > 10 || movedY > 10) {
+      clearMobileMessageHold();
+    }
+  };
+
   const deleteMobileMessage = async (messageId, scope = "me") => {
     try {
       const res = await fetch(apiUrl(`/api/chat/messages/${messageId}?scope=${scope}`), {
@@ -4311,15 +4359,16 @@ function Feed() {
                       return (
                         <div
                           key={chatMessage._id}
-                          onClick={(event) => {
-                            const target = event.target;
-                            if (target instanceof Element && target.closest("button,a,input,video")) return;
-                            if (chatMessage.pending || chatMessage.failed) return;
-                            setMobileMessageMenuId((current) =>
-                              current === chatMessage._id ? "" : chatMessage._id
-                            );
+                          onPointerDown={(event) => startMobileMessageHold(event, chatMessage)}
+                          onPointerMove={moveMobileMessageHold}
+                          onPointerUp={clearMobileMessageHold}
+                          onPointerLeave={clearMobileMessageHold}
+                          onPointerCancel={clearMobileMessageHold}
+                          onContextMenu={(event) => {
+                            event.preventDefault();
+                            openMobileMessageActions(chatMessage);
                           }}
-                          className={`relative max-w-[78%] rounded-[22px] text-[15px] leading-snug shadow-sm transition-transform active:scale-[0.99] ${
+                          className={`relative max-w-[78%] select-none rounded-[22px] text-[15px] leading-snug shadow-sm transition-transform active:scale-[0.99] ${
                             mediaOnly ? "p-0" : "px-4 py-2.5"
                           } ${
                             mediaOnly
