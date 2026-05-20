@@ -1,8 +1,53 @@
 @import "tailwindcss";
 
-html,
-body {
+:root {
   background: #000;
+  color-scheme: dark;
+  --vybe-safe-bottom: 24px;
+  --vybe-safe-bottom: max(24px, env(safe-area-inset-bottom));
+  --vybe-mobile-nav-height: calc(4rem + var(--vybe-safe-bottom));
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+  background: #000;
+}
+
+@supports (min-height: 100dvh) {
+  html,
+  body,
+  #root {
+    min-height: 100dvh;
+  }
+}
+
+body {
+  overscroll-behavior-y: none;
+}
+
+.vybe-mobile-shell {
+  background: #000;
+}
+
+.vybe-mobile-bottom-nav {
+  min-height: var(--vybe-mobile-nav-height);
+  padding-bottom: var(--vybe-safe-bottom);
+  background: #000;
+  transform: translateZ(0);
+}
+
+.vybe-mobile-bottom-fill {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--vybe-safe-bottom);
+  background: #000;
+  pointer-events: none;
+  z-index: 39;
 }
 
 button:not(:disabled),

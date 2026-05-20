@@ -3792,7 +3792,7 @@ function Feed() {
   const mobileChatContentStyle = isMobileChatTab
     ? { paddingBottom: hideMobileChatNav ? "0.75rem" : "4.75rem" }
     : undefined;
-  const mobileBottomNavHeight = "calc(4rem + env(safe-area-inset-bottom))";
+  const mobileBottomNavHeight = "var(--vybe-mobile-nav-height)";
   const mobileShellStyle = isMobileChatTab
     ? mobileChatViewportStyle
     : { paddingBottom: mobileBottomNavHeight };
@@ -3816,7 +3816,7 @@ function Feed() {
       ref={feedRootRef}
       data-vybe-feed-root
       style={mobileShellStyle}
-      className={`w-full lg:flex-1 lg:max-w-[840px] xl:max-w-[900px] bg-black relative border-x border-gray-900 ${
+      className={`vybe-mobile-shell w-full lg:flex-1 lg:max-w-[840px] xl:max-w-[900px] bg-black relative border-x border-gray-900 ${
         isMobileChatTab ? "pb-0" : ""
       } lg:pb-0 ${
         isMobileChatTab
@@ -6268,12 +6268,10 @@ function Feed() {
         </div>
       ) : null}
 
+      {!hideMobileChatNav ? <div className="vybe-mobile-bottom-fill lg:hidden" /> : null}
+
       <div
-        style={{
-          minHeight: mobileBottomNavHeight,
-          paddingBottom: "env(safe-area-inset-bottom)",
-        }}
-        className={`lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-black border-t border-gray-900 ${
+        className={`vybe-mobile-bottom-nav lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-gray-900 ${
           hideMobileChatNav ? "hidden" : "grid grid-cols-4"
         }`}
       >
