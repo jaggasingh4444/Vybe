@@ -3792,6 +3792,10 @@ function Feed() {
   const mobileChatContentStyle = isMobileChatTab
     ? { paddingBottom: hideMobileChatNav ? "0.75rem" : "4.75rem" }
     : undefined;
+  const mobileBottomNavHeight = "calc(4rem + env(safe-area-inset-bottom))";
+  const mobileShellStyle = isMobileChatTab
+    ? mobileChatViewportStyle
+    : { paddingBottom: mobileBottomNavHeight };
   const mobileChatWallpaperStyle = {
     backgroundColor: "#0b141a",
     backgroundImage:
@@ -3811,9 +3815,9 @@ function Feed() {
     <div
       ref={feedRootRef}
       data-vybe-feed-root
-      style={mobileChatViewportStyle}
+      style={mobileShellStyle}
       className={`w-full lg:flex-1 lg:max-w-[840px] xl:max-w-[900px] bg-black relative border-x border-gray-900 ${
-        isMobileChatTab ? "pb-0" : "pb-20"
+        isMobileChatTab ? "pb-0" : ""
       } lg:pb-0 ${
         isMobileChatTab
           ? "fixed inset-x-0 top-0 z-30 flex flex-col h-[100svh] overflow-hidden lg:relative lg:inset-auto"
@@ -6265,7 +6269,11 @@ function Feed() {
       ) : null}
 
       <div
-        className={`lg:hidden fixed bottom-0 left-0 right-0 z-40 h-16 bg-black/95 border-t border-gray-900 ${
+        style={{
+          minHeight: mobileBottomNavHeight,
+          paddingBottom: "env(safe-area-inset-bottom)",
+        }}
+        className={`lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-black border-t border-gray-900 ${
           hideMobileChatNav ? "hidden" : "grid grid-cols-4"
         }`}
       >
