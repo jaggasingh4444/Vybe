@@ -186,6 +186,14 @@ function LeftHome() {
     );
   };
 
+  const openOwnConnections = (type) => {
+    window.dispatchEvent(
+      new CustomEvent("vybe:open-profile-connections", {
+        detail: { user: userData, type },
+      })
+    );
+  };
+
   const handleMenuAction = (action) => {
     if (action === "profile") {
       openOwnProfile();
@@ -267,14 +275,22 @@ function LeftHome() {
             <p className="text-white font-bold text-lg">{postCount}</p>
             <p className="text-gray-500 text-xs">Posts</p>
           </div>
-          <div>
+          <button
+            type="button"
+            onClick={() => openOwnConnections("followers")}
+            className="text-left"
+          >
             <p className="text-white font-bold text-lg">{followerCount}</p>
             <p className="text-gray-500 text-xs">Followers</p>
-          </div>
-          <div>
+          </button>
+          <button
+            type="button"
+            onClick={() => openOwnConnections("following")}
+            className="text-left"
+          >
             <p className="text-white font-bold text-lg">{followingCount}</p>
             <p className="text-gray-500 text-xs">Following</p>
-          </div>
+          </button>
         </div>
 
         <nav className="mt-6 flex flex-col gap-2">

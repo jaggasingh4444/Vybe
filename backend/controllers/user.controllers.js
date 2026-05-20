@@ -143,6 +143,32 @@ export const getUserProfile = async (req, res) => {
     }
 };
 
+export const getUserConnections = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const type = req.query.type === "following" ? "following" : "followers";
+
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({ message: "Invalid user id" });
+        }
+
+        const user = await User.findById(userId)
+            .select(type)
+            .populate(type, "name userName profileImage followers following");
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        const users = user[type] || [];
+        await Promise.all(users.map((connectionUser) => persistLegacyProfileImage(connectionUser, req)));
+
+        return res.status(200).json({ type, users });
+    } catch (error) {
+        return res.status(500).json({ message: `connections error ${error.message}` });
+    }
+};
+
 export const updateProfile = async (req, res) => {
     try {
         const { name, userName, profileImage } = req.body;

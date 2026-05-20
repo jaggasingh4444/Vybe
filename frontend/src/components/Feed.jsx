@@ -453,6 +453,14 @@ function Feed() {
   const [profileBusy, setProfileBusy] = useState(false);
   const [selectedProfileItem, setSelectedProfileItem] = useState(null);
   const [profileItemMenuOpen, setProfileItemMenuOpen] = useState(false);
+  const [connectionsPanel, setConnectionsPanel] = useState({
+    open: false,
+    type: "followers",
+    owner: null,
+    users: [],
+    loading: false,
+    error: "",
+  });
   const [stories, setStories] = useState([]);
   const [selectedStory, setSelectedStory] = useState(null);
   const [storyMediaError, setStoryMediaError] = useState(false);
@@ -2448,6 +2456,54 @@ function Feed() {
     setProfileContentType("all");
   }, [openProfile, profileHistory, profileReturnTab]);
 
+  const closeConnectionsPanel = () => {
+    setConnectionsPanel((currentPanel) => ({
+      ...currentPanel,
+      open: false,
+      error: "",
+    }));
+  };
+
+  const openConnectionsList = useCallback(async ({ user, userId, type = "followers" } = {}) => {
+    const connectionType = type === "following" ? "following" : "followers";
+    const owner = user || profileData?.user || userData;
+    const ownerId = (userId || owner?._id || "").toString();
+
+    if (!ownerId) return;
+
+    setConnectionsPanel({
+      open: true,
+      type: connectionType,
+      owner: owner || { _id: ownerId },
+      users: [],
+      loading: true,
+      error: "",
+    });
+
+    try {
+      const res = await fetch(apiUrl(`/api/users/${ownerId}/connections?type=${connectionType}`), {
+        credentials: "include",
+        headers: getTabAuthHeaders(),
+      });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message || "Connections failed to load");
+
+      setConnectionsPanel((currentPanel) => ({
+        ...currentPanel,
+        users: Array.isArray(data.users) ? data.users : [],
+        loading: false,
+        error: "",
+      }));
+    } catch (error) {
+      setConnectionsPanel((currentPanel) => ({
+        ...currentPanel,
+        loading: false,
+        error: error.message || "Connections failed to load.",
+      }));
+    }
+  }, [profileData?.user, userData]);
+
   const handleProfileFollow = async () => {
     const profileUser = profileData?.user;
     if (!profileUser?._id || profileUser._id === userData?._id) return;
@@ -2495,6 +2551,15 @@ function Feed() {
     window.addEventListener("vybe:open-profile", handleOpenProfile);
     return () => window.removeEventListener("vybe:open-profile", handleOpenProfile);
   }, [openProfile]);
+
+  useEffect(() => {
+    const handleOpenConnections = (event) => {
+      openConnectionsList(event.detail || {});
+    };
+
+    window.addEventListener("vybe:open-profile-connections", handleOpenConnections);
+    return () => window.removeEventListener("vybe:open-profile-connections", handleOpenConnections);
+  }, [openConnectionsList]);
 
   useEffect(() => {
     const handleOpenSharedContent = (event) => {
@@ -3804,14 +3869,22 @@ function Feed() {
                         <p className="text-white font-bold">{activeProfileContent.length}</p>
                         <p className="text-gray-500 text-xs">Posts</p>
                       </div>
-                      <div>
+                      <button
+                        type="button"
+                        onClick={() => openConnectionsList({ user: activeProfileUser, type: "followers" })}
+                        className="text-left"
+                      >
                         <p className="text-white font-bold">{activeProfileUser.followers?.length || 0}</p>
                         <p className="text-gray-500 text-xs">Followers</p>
-                      </div>
-                      <div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openConnectionsList({ user: activeProfileUser, type: "following" })}
+                        className="text-left"
+                      >
                         <p className="text-white font-bold">{activeProfileUser.following?.length || 0}</p>
                         <p className="text-gray-500 text-xs">Following</p>
-                      </div>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -5200,6 +5273,80 @@ function Feed() {
                   {storyReplyText.trim() ? <FiSend /> : <FiMessageCircle />}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {connectionsPanel.open ? (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/80 p-0 sm:items-center sm:p-4"
+          onClick={closeConnectionsPanel}
+        >
+          <div
+            className="w-full max-h-[82vh] overflow-hidden rounded-t-2xl border-t border-gray-800 bg-black text-white shadow-2xl sm:max-w-[420px] sm:rounded-lg sm:border"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex h-14 items-center justify-between border-b border-gray-900 px-4">
+              <div className="min-w-0">
+                <h2 className="font-semibold">
+                  {connectionsPanel.type === "following" ? "Following" : "Followers"}
+                </h2>
+                <p className="truncate text-xs text-gray-500">
+                  {connectionsPanel.owner?.userName || connectionsPanel.owner?.name || "Profile"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeConnectionsPanel}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-gray-400 hover:bg-[#111] hover:text-white"
+                aria-label="Close connections"
+              >
+                <FiX />
+              </button>
+            </div>
+
+            <div className="max-h-[calc(82vh-56px)] overflow-y-auto p-2">
+              {connectionsPanel.loading ? (
+                <div className="py-12 text-center text-sm text-gray-500">Loading...</div>
+              ) : connectionsPanel.error ? (
+                <div className="py-12 text-center text-sm text-gray-500">
+                  {connectionsPanel.error}
+                </div>
+              ) : connectionsPanel.users.length > 0 ? (
+                connectionsPanel.users.map((connectionUser) => (
+                  <button
+                    key={connectionUser._id}
+                    type="button"
+                    onClick={() => {
+                      closeConnectionsPanel();
+                      openProfile(connectionUser);
+                    }}
+                    className="flex w-full items-center gap-3 rounded-md px-3 py-3 text-left hover:bg-[#101010]"
+                  >
+                    <img
+                      src={mediaUrl(connectionUser.profileImage) || dp}
+                      alt={connectionUser.userName || "Profile"}
+                      className="h-11 w-11 shrink-0 rounded-full object-cover"
+                      onError={(event) => {
+                        event.currentTarget.src = dp;
+                      }}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-white">
+                        {connectionUser.userName}
+                      </p>
+                      <p className="truncate text-xs text-gray-500">
+                        {connectionUser.name || "Open profile"}
+                      </p>
+                    </div>
+                  </button>
+                ))
+              ) : (
+                <div className="py-12 text-center text-sm text-gray-500">
+                  No {connectionsPanel.type} yet.
+                </div>
+              )}
             </div>
           </div>
         </div>
