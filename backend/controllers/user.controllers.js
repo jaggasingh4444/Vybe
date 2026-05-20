@@ -279,3 +279,45 @@ export const toggleFollow = async (req, res) => {
         return res.status(500).json({ message: `follow error ${error.message}` });
     }
 };
+
+export const removeFollower = async (req, res) => {
+    try {
+        const currentUserId = req.userId;
+        const followerId = req.params.userId;
+
+        if (currentUserId === followerId) {
+            return res.status(400).json({ message: "You cannot remove yourself" });
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(followerId)) {
+            return res.status(400).json({ message: "Invalid user id" });
+        }
+
+        const [currentUser, followerUser] = await Promise.all([
+            User.findById(currentUserId),
+            User.findById(followerId),
+        ]);
+
+        if (!currentUser || !followerUser) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        await Promise.all([
+            User.findByIdAndUpdate(currentUserId, { $pull: { followers: followerId } }),
+            User.findByIdAndUpdate(followerId, { $pull: { following: currentUserId } }),
+        ]);
+
+        const [updatedCurrentUser, updatedTargetUser] = await Promise.all([
+            User.findById(currentUserId).select(safeUserSelect),
+            User.findById(followerId).select(safeUserSelect),
+        ]);
+
+        return res.status(200).json({
+            removed: true,
+            currentUser: updatedCurrentUser,
+            targetUser: updatedTargetUser,
+        });
+    } catch (error) {
+        return res.status(500).json({ message: `remove follower error ${error.message}` });
+    }
+};

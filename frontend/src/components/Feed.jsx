@@ -461,6 +461,7 @@ function Feed() {
     loading: false,
     error: "",
   });
+  const [connectionsBusyUserId, setConnectionsBusyUserId] = useState("");
   const [stories, setStories] = useState([]);
   const [selectedStory, setSelectedStory] = useState(null);
   const [storyMediaError, setStoryMediaError] = useState(false);
@@ -614,6 +615,7 @@ function Feed() {
   const selectedMobileChatTyping = Boolean(
     selectedMobileChat?._id && mobileTypingUserIds.has(selectedMobileChat._id)
   );
+  const connectionsOwnerIsCurrentUser = isSameId(connectionsPanel.owner?._id, userData?._id);
   const focusMobileMessageInput = useCallback(() => {
     if (!isMobile || activeMobileTab !== "chat" || !selectedMobileChat?._id) return;
 
@@ -2322,6 +2324,45 @@ function Feed() {
     );
   };
 
+  const applyRelationshipUpdate = ({ currentUser, targetUser }, options = {}) => {
+    const updatedUsers = [currentUser, targetUser].filter((user) => user?._id);
+    const findUpdatedUser = (userId) =>
+      updatedUsers.find((user) => isSameId(user._id, userId));
+
+    if (currentUser?._id) {
+      dispatch(setUserData(currentUser));
+    }
+
+    setProfileData((currentProfile) => {
+      const updatedProfileUser = findUpdatedUser(currentProfile?.user?._id);
+      if (!updatedProfileUser) return currentProfile;
+
+      return {
+        ...currentProfile,
+        user: updatedProfileUser,
+      };
+    });
+
+    setFeedUserResults((currentUsers) =>
+      currentUsers.map((user) => findUpdatedUser(user._id) || user)
+    );
+    setMobileChatUsers((currentUsers) =>
+      currentUsers.map((user) => findUpdatedUser(user._id) || user)
+    );
+    setConnectionsPanel((currentPanel) => {
+      const updatedOwner = findUpdatedUser(currentPanel.owner?._id) || currentPanel.owner;
+      const removedUserId = options.removeConnectionUserId;
+
+      return {
+        ...currentPanel,
+        owner: updatedOwner,
+        users: currentPanel.users
+          .map((user) => findUpdatedUser(user._id) || user)
+          .filter((user) => !removedUserId || !isSameId(user._id, removedUserId)),
+      };
+    });
+  };
+
   const handleMobileFollow = async (targetUser) => {
     setMobileBusyUserId(targetUser._id);
     setMobileChatStatus("");
@@ -2335,12 +2376,12 @@ function Feed() {
 
       if (!res.ok) throw new Error(data.message || "Follow failed");
 
-      dispatch(setUserData(data.currentUser));
-      setMobileChatUsers((currentUsers) =>
-        currentUsers.map((user) =>
-          user._id === data.targetUser._id ? data.targetUser : user
-        )
-      );
+      applyRelationshipUpdate(data, {
+        removeConnectionUserId:
+          connectionsOwnerIsCurrentUser && connectionsPanel.type === "following" && !data.following
+            ? data.targetUser?._id
+            : "",
+      });
       await fetchMobileChatUsers();
     } catch (error) {
       setMobileChatStatus(error.message || "Follow failed.");
@@ -2362,17 +2403,12 @@ function Feed() {
 
       if (!res.ok) throw new Error(data.message || "Follow failed");
 
-      dispatch(setUserData(data.currentUser));
-      setFeedUserResults((currentUsers) =>
-        currentUsers.map((user) =>
-          user._id === data.targetUser._id ? data.targetUser : user
-        )
-      );
-      setMobileChatUsers((currentUsers) =>
-        currentUsers.map((user) =>
-          user._id === data.targetUser._id ? data.targetUser : user
-        )
-      );
+      applyRelationshipUpdate(data, {
+        removeConnectionUserId:
+          connectionsOwnerIsCurrentUser && connectionsPanel.type === "following" && !data.following
+            ? data.targetUser?._id
+            : "",
+      });
       await fetchMobileChatUsers();
     } catch (error) {
       setMessage(error.message || "Follow failed.");
@@ -2520,26 +2556,77 @@ function Feed() {
 
       if (!res.ok) throw new Error(data.message || "Follow failed");
 
-      dispatch(setUserData(data.currentUser));
-      setProfileData((currentProfile) =>
-        currentProfile?.user?._id === data.targetUser._id
-          ? { ...currentProfile, user: data.targetUser }
-          : currentProfile
-      );
-      setFeedUserResults((currentUsers) =>
-        currentUsers.map((user) =>
-          user._id === data.targetUser._id ? data.targetUser : user
-        )
-      );
-      setMobileChatUsers((currentUsers) =>
-        currentUsers.map((user) =>
-          user._id === data.targetUser._id ? data.targetUser : user
-        )
-      );
+      applyRelationshipUpdate(data, {
+        removeConnectionUserId:
+          connectionsOwnerIsCurrentUser && connectionsPanel.type === "following" && !data.following
+            ? data.targetUser?._id
+            : "",
+      });
     } catch (error) {
       setProfileStatus(error.message || "Follow failed.");
     } finally {
       setProfileBusy(false);
+    }
+  };
+
+  const handleConnectionFollow = async (targetUser) => {
+    if (!targetUser?._id || targetUser._id === userData?._id) return;
+
+    setConnectionsBusyUserId(targetUser._id);
+
+    try {
+      const res = await fetch(apiUrl(`/api/users/${targetUser._id}/follow`), {
+        method: "POST",
+        credentials: "include",
+        headers: getTabAuthHeaders(),
+      });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message || "Follow failed");
+
+      applyRelationshipUpdate(data, {
+        removeConnectionUserId:
+          connectionsOwnerIsCurrentUser && connectionsPanel.type === "following" && !data.following
+            ? data.targetUser?._id
+            : "",
+      });
+      await fetchMobileChatUsers();
+    } catch (error) {
+      setConnectionsPanel((currentPanel) => ({
+        ...currentPanel,
+        error: error.message || "Follow failed.",
+      }));
+    } finally {
+      setConnectionsBusyUserId("");
+    }
+  };
+
+  const handleRemoveFollower = async (targetUser) => {
+    if (!targetUser?._id || targetUser._id === userData?._id) return;
+
+    setConnectionsBusyUserId(targetUser._id);
+
+    try {
+      const res = await fetch(apiUrl(`/api/users/${targetUser._id}/follower`), {
+        method: "DELETE",
+        credentials: "include",
+        headers: getTabAuthHeaders(),
+      });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message || "Remove failed");
+
+      applyRelationshipUpdate(data, {
+        removeConnectionUserId: data.targetUser?._id || targetUser._id,
+      });
+      await fetchMobileChatUsers();
+    } catch (error) {
+      setConnectionsPanel((currentPanel) => ({
+        ...currentPanel,
+        error: error.message || "Remove failed.",
+      }));
+    } finally {
+      setConnectionsBusyUserId("");
     }
   };
 
@@ -5314,34 +5401,79 @@ function Feed() {
                   {connectionsPanel.error}
                 </div>
               ) : connectionsPanel.users.length > 0 ? (
-                connectionsPanel.users.map((connectionUser) => (
-                  <button
-                    key={connectionUser._id}
-                    type="button"
-                    onClick={() => {
-                      closeConnectionsPanel();
-                      openProfile(connectionUser);
-                    }}
-                    className="flex w-full items-center gap-3 rounded-md px-3 py-3 text-left hover:bg-[#101010]"
-                  >
-                    <img
-                      src={mediaUrl(connectionUser.profileImage) || dp}
-                      alt={connectionUser.userName || "Profile"}
-                      className="h-11 w-11 shrink-0 rounded-full object-cover"
-                      onError={(event) => {
-                        event.currentTarget.src = dp;
-                      }}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-white">
-                        {connectionUser.userName}
-                      </p>
-                      <p className="truncate text-xs text-gray-500">
-                        {connectionUser.name || "Open profile"}
-                      </p>
+                connectionsPanel.users.map((connectionUser) => {
+                  const connectionIsSelf = isSameId(connectionUser._id, userData?._id);
+                  const connectionIsFollowing = mobileFollowingIds.has(connectionUser._id);
+                  const canRemoveFollower =
+                    connectionsOwnerIsCurrentUser &&
+                    connectionsPanel.type === "followers" &&
+                    !connectionIsSelf;
+                  const canToggleConnectionFollow =
+                    !connectionIsSelf &&
+                    !(connectionsOwnerIsCurrentUser && connectionsPanel.type === "followers");
+                  const connectionFollowsMe = mobileFollowerIds.has(connectionUser._id);
+                  const actionLabel = canRemoveFollower
+                    ? "Remove"
+                    : connectionIsFollowing
+                      ? "Following"
+                      : connectionFollowsMe
+                        ? "Follow Back"
+                        : "Follow";
+
+                  return (
+                    <div
+                      key={connectionUser._id}
+                      className="flex w-full items-center gap-3 rounded-md px-3 py-3 hover:bg-[#101010]"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          closeConnectionsPanel();
+                          openProfile(connectionUser);
+                        }}
+                        className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                      >
+                        <img
+                          src={mediaUrl(connectionUser.profileImage) || dp}
+                          alt={connectionUser.userName || "Profile"}
+                          className="h-11 w-11 shrink-0 rounded-full object-cover"
+                          onError={(event) => {
+                            event.currentTarget.src = dp;
+                          }}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-white">
+                            {connectionUser.userName}
+                          </p>
+                          <p className="truncate text-xs text-gray-500">
+                            {connectionUser.name || "Open profile"}
+                          </p>
+                        </div>
+                      </button>
+
+                      {canRemoveFollower || canToggleConnectionFollow ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            canRemoveFollower
+                              ? handleRemoveFollower(connectionUser)
+                              : handleConnectionFollow(connectionUser)
+                          }
+                          disabled={connectionsBusyUserId === connectionUser._id}
+                          className={`h-8 shrink-0 rounded-md px-3 text-xs font-semibold disabled:opacity-60 ${
+                            canRemoveFollower
+                              ? "bg-[#171717] text-red-300"
+                              : connectionIsFollowing
+                                ? "bg-[#171717] text-gray-300"
+                                : "bg-white text-black"
+                          }`}
+                        >
+                          {connectionsBusyUserId === connectionUser._id ? "..." : actionLabel}
+                        </button>
+                      ) : null}
                     </div>
-                  </button>
-                ))
+                  );
+                })
               ) : (
                 <div className="py-12 text-center text-sm text-gray-500">
                   No {connectionsPanel.type} yet.
