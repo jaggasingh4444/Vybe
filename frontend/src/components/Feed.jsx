@@ -3143,6 +3143,11 @@ function Feed() {
     : false;
   const isMobileReelFeed = isMobile && activeMobileTab === "reels";
   const isMobileChatTab = isMobile && activeMobileTab === "chat";
+  const activeMobileActionMessage = mobileMessageMenuId
+    ? mobileMessages.find((chatMessage) => chatMessage._id === mobileMessageMenuId)
+    : null;
+  const activeMobileActionMine =
+    isSameId(getMessageSenderId(activeMobileActionMessage), userData?._id);
   const canShareCreate =
     mode === "reel" ? Boolean(selectedFile && selectedMediaType === "video") : Boolean(selectedFile || caption.trim());
 
@@ -4326,7 +4331,7 @@ function Feed() {
                                     chatMessage.failed ? "bg-red-600" : chatMessage.pending ? "opacity-70" : ""
                                   }`
                                 : "self-start bg-[#181818] text-gray-100 rounded-bl-md"
-                          }`}
+                          } ${mobileMessageMenuId === chatMessage._id ? "ring-1 ring-white/20" : ""}`}
                         >
                           {renderChatReplyPreview(chatMessage)}
                           {chatMessage.text ? (
@@ -4339,56 +4344,6 @@ function Feed() {
                             <p className="mt-1 text-[10px] text-white/80">Not sent</p>
                           ) : mine ? (
                             <MessageStatusTicks message={chatMessage} />
-                          ) : null}
-                          {!chatMessage.pending && !chatMessage.failed && mobileMessageMenuId === chatMessage._id ? (
-                            <div
-                              className={`mt-2 rounded-2xl border border-white/10 p-2 shadow-xl ${
-                                mine ? "bg-black/20" : "bg-black/40"
-                              }`}
-                              onClick={(event) => event.stopPropagation()}
-                            >
-                              <div className="flex gap-1 overflow-x-auto pb-1">
-                                {REACTION_OPTIONS.map((emoji) => (
-                                  <button
-                                    key={emoji}
-                                    type="button"
-                                    onClick={() => reactToMobileMessage(chatMessage._id, emoji)}
-                                    className="h-8 w-8 shrink-0 rounded-full text-base active:bg-white/10"
-                                    aria-label={`React ${emoji}`}
-                                  >
-                                    {emoji}
-                                  </button>
-                                ))}
-                              </div>
-                              <div className="mt-1 flex flex-wrap gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setMobileReplyToMessage(chatMessage);
-                                    setMobileMessageMenuId("");
-                                  }}
-                                  className="h-8 rounded-full bg-white/10 px-3 text-xs font-semibold text-white"
-                                >
-                                  Reply
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => deleteMobileMessage(chatMessage._id, "me")}
-                                  className="h-8 rounded-full bg-white/10 px-3 text-xs font-semibold text-white"
-                                >
-                                  Delete for me
-                                </button>
-                                {mine ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => deleteMobileMessage(chatMessage._id, "everyone")}
-                                    className="h-8 rounded-full bg-red-500/15 px-3 text-xs font-semibold text-red-200"
-                                  >
-                                    Delete for everyone
-                                  </button>
-                                ) : null}
-                              </div>
-                            </div>
                           ) : null}
                         </div>
                       );
@@ -5766,6 +5721,78 @@ function Feed() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      ) : null}
+
+      {activeMobileActionMessage ? (
+        <div
+          className="fixed inset-0 z-50 flex items-end bg-black/45 lg:hidden"
+          onClick={() => setMobileMessageMenuId("")}
+        >
+          <div
+            className="w-full rounded-t-[28px] border-t border-gray-800 bg-[#070707] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 text-white shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-gray-700" />
+
+            <div className="mb-3 rounded-3xl border border-gray-900 bg-[#101010] p-2">
+              <div className="flex items-center justify-center gap-1.5">
+                {REACTION_OPTIONS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => reactToMobileMessage(activeMobileActionMessage._id, emoji)}
+                    className="flex h-10 w-10 items-center justify-center rounded-full text-xl active:bg-white/10"
+                    aria-label={`React ${emoji}`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="overflow-hidden rounded-3xl border border-gray-900 bg-[#101010]">
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileReplyToMessage(activeMobileActionMessage);
+                  setMobileMessageMenuId("");
+                }}
+                className="flex h-12 w-full items-center justify-between px-4 text-left text-sm font-semibold text-white active:bg-white/5"
+              >
+                <span>Reply</span>
+                <FiMessageCircle className="text-gray-400" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => deleteMobileMessage(activeMobileActionMessage._id, "me")}
+                className="flex h-12 w-full items-center justify-between border-t border-gray-900 px-4 text-left text-sm font-semibold text-white active:bg-white/5"
+              >
+                <span>Delete for me</span>
+                <FiTrash2 className="text-gray-400" />
+              </button>
+
+              {activeMobileActionMine ? (
+                <button
+                  type="button"
+                  onClick={() => deleteMobileMessage(activeMobileActionMessage._id, "everyone")}
+                  className="flex h-12 w-full items-center justify-between border-t border-gray-900 px-4 text-left text-sm font-semibold text-red-300 active:bg-red-500/10"
+                >
+                  <span>Delete for everyone</span>
+                  <FiTrash2 className="text-red-300" />
+                </button>
+              ) : null}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setMobileMessageMenuId("")}
+              className="mt-3 h-11 w-full rounded-2xl bg-[#151515] text-sm font-semibold text-gray-200 active:bg-[#202020]"
+            >
+              Cancel
+            </button>
           </div>
         </div>
       ) : null}
