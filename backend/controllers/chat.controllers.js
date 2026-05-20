@@ -68,6 +68,23 @@ const getIdString = (value) => value?._id?.toString?.() || value?.toString?.() |
 const isMessageParticipant = (message, userId) =>
   [getIdString(message.sender), getIdString(message.receiver)].includes(userId);
 
+const serializeChatListMessage = (message, currentUserId) => {
+  if (!message?._id) return null;
+
+  const senderId = getIdString(message.sender);
+
+  return {
+    _id: message._id.toString(),
+    sender: senderId,
+    receiver: getIdString(message.receiver),
+    text: message.text || "",
+    mediaType: message.mediaType || message.attachments?.[0]?.mediaType || "",
+    sharedContentType: message.sharedContent?.contentType || "",
+    isMine: senderId === currentUserId,
+    createdAt: message.createdAt,
+  };
+};
+
 const areMutualConnections = (currentUser, otherUserId) => {
   const otherId = otherUserId.toString();
   const followers = currentUser?.followers || [];
@@ -269,6 +286,57 @@ const notifyDeliveredMessages = async (receiverId) => {
   }
 };
 
+const markConversationMessagesRead = async (readerId, senderId) => {
+  const unreadMessages = await Message.find({
+    ...visibleToUserFilter(readerId),
+    sender: senderId,
+    receiver: readerId,
+    read: { $ne: true },
+  }).select("_id delivered");
+
+  const unreadMessageIds = unreadMessages.map((message) => message._id);
+  if (unreadMessageIds.length === 0) {
+    return { messageIds: [], readAt: null };
+  }
+
+  const readAt = new Date();
+
+  await Message.updateMany(
+    { _id: { $in: unreadMessageIds } },
+    { $set: { read: true, readAt, delivered: true, deliveredAt: readAt } }
+  );
+
+  const newlyDeliveredIds = unreadMessages
+    .filter((message) => !message.delivered)
+    .map((message) => message._id.toString());
+
+  if (newlyDeliveredIds.length > 0) {
+    const deliveredPayload = {
+      type: "messages:delivered",
+      receiverId: readerId,
+      senderId,
+      messageIds: newlyDeliveredIds,
+      deliveredAt: readAt,
+    };
+
+    sendToUser(readerId, deliveredPayload);
+    sendToUser(senderId, deliveredPayload);
+  }
+
+  const payload = {
+    type: "messages:seen",
+    readerId,
+    senderId,
+    messageIds: unreadMessageIds.map((id) => id.toString()),
+    readAt,
+  };
+
+  sendToUser(readerId, payload);
+  sendToUser(senderId, payload);
+
+  return { messageIds: payload.messageIds, readAt };
+};
+
 export const chatEvents = (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache, no-transform");
@@ -315,7 +383,7 @@ export const getChatUsers = async (req, res) => {
       ...visibleToUserFilter(req.userId),
       $or: [{ sender: req.userId }, { receiver: req.userId }],
     })
-      .select("sender receiver updatedAt")
+      .select("sender receiver text mediaType attachments sharedContent createdAt updatedAt")
       .sort({ updatedAt: -1 })
       .limit(100);
 
@@ -331,13 +399,19 @@ export const getChatUsers = async (req, res) => {
       unreadCountMap.set(senderId, (unreadCountMap.get(senderId) || 0) + 1);
     }
 
-    const ids = [
-      ...messageThreads.map((message) =>
+    const latestMessageMap = new Map();
+    const ids = messageThreads.map((message) => {
+      const otherUserId =
         message.sender.toString() === req.userId
           ? message.receiver.toString()
-          : message.sender.toString()
-      ),
-    ];
+          : message.sender.toString();
+
+      if (!latestMessageMap.has(otherUserId)) {
+        latestMessageMap.set(otherUserId, serializeChatListMessage(message, req.userId));
+      }
+
+      return otherUserId;
+    });
 
     const uniqueIds = [...new Set(ids)];
     const users = await User.find({ _id: { $in: uniqueIds } }).select(safeUserSelect);
@@ -350,6 +424,7 @@ export const getChatUsers = async (req, res) => {
         ...user.toObject(),
         unreadCount: unreadCountMap.get(user._id.toString()) || 0,
         isOnline: chatClients.has(user._id.toString()),
+        latestMessage: latestMessageMap.get(user._id.toString()) || null,
       }));
 
     return res.status(200).json(orderedUsers);
@@ -433,52 +508,7 @@ export const getMessages = async (req, res) => {
       ...sinceFilter,
     };
 
-    const unreadMessages = await Message.find({
-      ...visibleToUserFilter(req.userId),
-      sender: otherUserId,
-      receiver: req.userId,
-      read: { $ne: true },
-      ...sinceFilter,
-    }).select("_id delivered");
-
-    const unreadMessageIds = unreadMessages.map((message) => message._id);
-
-    if (unreadMessageIds.length > 0) {
-      const readAt = new Date();
-
-      await Message.updateMany(
-        { _id: { $in: unreadMessageIds } },
-        { $set: { read: true, readAt, delivered: true, deliveredAt: readAt } }
-      );
-
-      const newlyDeliveredIds = unreadMessages
-        .filter((message) => !message.delivered)
-        .map((message) => message._id.toString());
-
-      if (newlyDeliveredIds.length > 0) {
-        const deliveredPayload = {
-          type: "messages:delivered",
-          receiverId: req.userId,
-          senderId: otherUserId,
-          messageIds: newlyDeliveredIds,
-          deliveredAt: readAt,
-        };
-
-        sendToUser(req.userId, deliveredPayload);
-        sendToUser(otherUserId, deliveredPayload);
-      }
-
-      const payload = {
-        type: "messages:seen",
-        readerId: req.userId,
-        senderId: otherUserId,
-        messageIds: unreadMessageIds.map((id) => id.toString()),
-        readAt,
-      };
-
-      sendToUser(req.userId, payload);
-      sendToUser(otherUserId, payload);
-    }
+    await markConversationMessagesRead(req.userId, otherUserId);
 
     const messages = await Message.find(conversationFilter)
       .populate("sender", messageUserSelect)
@@ -493,6 +523,22 @@ export const getMessages = async (req, res) => {
     return res.status(200).json(orderedMessages);
   } catch (error) {
     return res.status(500).json({ message: `messages error ${error.message}` });
+  }
+};
+
+export const markMessagesRead = async (req, res) => {
+  try {
+    const otherUserId = req.params.userId;
+
+    if (req.userId === otherUserId) {
+      return res.status(400).json({ message: "Invalid conversation" });
+    }
+
+    const result = await markConversationMessagesRead(req.userId, otherUserId);
+
+    return res.status(200).json(result);
+  } catch (error) {
+    return res.status(500).json({ message: `read messages error ${error.message}` });
   }
 };
 
@@ -518,16 +564,18 @@ export const sendMessage = async (req, res) => {
       return res.status(400).json({ message: "Message cannot be empty" });
     }
 
-    const currentUser = await User.findById(req.userId).select("followers following");
-    if (!currentUser) {
-      return res.status(404).json({ message: "User not found" });
+    if (sharedContent) {
+      const currentUser = await User.findById(req.userId).select("followers following");
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (!areMutualConnections(currentUser, receiverId)) {
+        return res.status(403).json({ message: "You can share only with connected users" });
+      }
     }
 
-    if (sharedContent && !areMutualConnections(currentUser, receiverId)) {
-      return res.status(403).json({ message: "You can share only with connected users" });
-    }
-
-    const receiver = await User.findById(receiverId).select("_id");
+    const receiver = await User.exists({ _id: receiverId });
     if (!receiver) {
       return res.status(404).json({ message: "Receiver not found" });
     }

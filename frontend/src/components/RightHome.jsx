@@ -67,6 +67,32 @@ const getMessageClientId = (message) => message?.clientId || "";
 const getMessageReplyId = (message) => message?.replyTo?.messageId || "";
 const isSameId = (left, right) =>
   Boolean(left && right) && left.toString() === right.toString();
+const createChatListMessagePreview = (message, currentUserId) => {
+  if (!message?._id) return null;
+
+  const senderId = getMessageSenderId(message);
+  return {
+    _id: message._id,
+    sender: senderId,
+    receiver: getMessageReceiverId(message),
+    text: message.text || "",
+    mediaType: message.mediaType || getMessageAttachments(message)[0]?.mediaType || "",
+    sharedContentType: message.sharedContent?.contentType || "",
+    isMine: isSameId(senderId, currentUserId),
+    createdAt: message.createdAt,
+  };
+};
+const getChatPreviewText = (user, fallbackText) => {
+  const latestMessage = user?.latestMessage;
+  if (!latestMessage) return fallbackText;
+
+  const prefix = latestMessage.isMine ? "You: " : "";
+  if (latestMessage.text) return `${prefix}${latestMessage.text}`;
+  if (latestMessage.mediaType === "video") return `${prefix}Video`;
+  if (latestMessage.mediaType === "image") return `${prefix}Photo`;
+  if (latestMessage.sharedContentType) return `${prefix}Shared ${latestMessage.sharedContentType}`;
+  return `${prefix}Message`;
+};
 const MessageStatusTicks = ({ message }) => {
   if (!message || message.failed) return null;
 
@@ -272,6 +298,7 @@ function RightHome() {
     typeof window === "undefined" ? true : window.matchMedia("(min-width: 1024px)").matches
   );
   const selectedChatRef = useRef(null);
+  const onlineUserIdsRef = useRef(new Set());
   const openChatRef = useRef(null);
   const messagesEndRef = useRef(null);
   const mediaInputRef = useRef(null);
@@ -307,7 +334,8 @@ function RightHome() {
         _id: otherUserId,
         profileImage: otherUser.profileImage || existing?.profileImage || "",
         unreadCount,
-        isOnline: existing?.isOnline || onlineUserIds.has(otherUserId),
+        isOnline: existing?.isOnline || onlineUserIdsRef.current.has(otherUserId),
+        latestMessage: createChatListMessagePreview(message, currentUserId),
       };
 
       return [
@@ -315,7 +343,7 @@ function RightHome() {
         ...currentUsers.filter((user) => user._id?.toString() !== otherUserId),
       ];
     });
-  }, [onlineUserIds, userData?._id]);
+  }, [userData?._id]);
 
   const followingIds = new Set((userData?.following || []).map((id) => id.toString()));
   const followerIds = new Set((userData?.followers || []).map((id) => id.toString()));
@@ -586,6 +614,32 @@ function RightHome() {
     }
   };
 
+  const markOpenChatRead = useCallback(async (userId) => {
+    if (!userId) return;
+
+    try {
+      const res = await fetch(apiUrl(`/api/chat/${userId}/messages/read`), {
+        method: "PATCH",
+        credentials: "include",
+        headers: getTabAuthHeaders(),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.messageIds?.length) {
+        const seenIds = new Set(data.messageIds.map((id) => id.toString()));
+        setMessages((current) =>
+          current.map((message) =>
+            seenIds.has(message._id?.toString())
+              ? { ...message, read: true, readAt: data.readAt }
+              : message
+          )
+        );
+      }
+    } catch {
+      // The next realtime/read refresh will repair receipt state if this tiny request fails.
+    }
+  }, []);
+
   useEffect(() => {
     const query = chatSearch.trim();
 
@@ -675,13 +729,11 @@ function RightHome() {
 
         if (data.type === "messages:delivered") {
           markMessagesDelivered(data.messageIds, data.deliveredAt);
-          fetchChatUsers();
           return;
         }
 
         if (data.type === "messages:seen") {
           markMessagesSeen(data.messageIds, data.readAt);
-          fetchChatUsers();
           return;
         }
 
@@ -724,11 +776,9 @@ function RightHome() {
           mergeMessage(incoming);
 
           if (incoming.receiver?._id === currentUserId) {
-            fetchMessages(selectedId, { silent: true });
+            markOpenChatRead(selectedId);
           }
         }
-
-        fetchChatUsers();
       } catch {
         fetchChatUsers();
       }
@@ -739,7 +789,7 @@ function RightHome() {
     };
 
     return () => events.close();
-  }, [isDesktop, setTypingIndicator, syncChatUserFromMessage, userData?._id]);
+  }, [isDesktop, markOpenChatRead, setTypingIndicator, syncChatUserFromMessage, userData?._id]);
 
   useEffect(() => {
     if (!isDesktop || !selectedChat?._id) return undefined;
@@ -763,6 +813,10 @@ function RightHome() {
   useEffect(() => {
     selectedChatRef.current = selectedChat;
   }, [selectedChat]);
+
+  useEffect(() => {
+    onlineUserIdsRef.current = onlineUserIds;
+  }, [onlineUserIds]);
 
   useEffect(() => {
     stopOutgoingTyping();
@@ -838,8 +892,14 @@ function RightHome() {
   };
 
   const openChat = async (user) => {
-    setSelectedChat(user);
-    selectedChatRef.current = user;
+    const chatUser = { ...user, unreadCount: 0 };
+    setSelectedChat(chatUser);
+    selectedChatRef.current = chatUser;
+    setChatUsers((currentUsers) =>
+      currentUsers.map((currentUser) =>
+        currentUser._id === user._id ? { ...currentUser, unreadCount: 0 } : currentUser
+      )
+    );
     setMessages([]);
     setStatus("");
     setConversationMenuOpen(false);
@@ -847,7 +907,7 @@ function RightHome() {
     setMessageMedia([]);
     setReactionMenuMessageId("");
     await fetchMessages(user._id);
-    await fetchChatUsers();
+    fetchChatUsers();
   };
   openChatRef.current = openChat;
 
@@ -897,6 +957,7 @@ function RightHome() {
     };
 
     setMessages((current) => [...current, optimisticMessage]);
+    syncChatUserFromMessage(optimisticMessage);
     setMessageText("");
     setMessageMedia([]);
     setReplyToMessage(null);
@@ -932,15 +993,16 @@ function RightHome() {
       if (!res.ok) throw new Error(data.message || "Message failed");
 
       saveConfirmedMessage(data, tempId);
+      syncChatUserFromMessage(data);
       setChatEmojiOpen(false);
       setStatus("");
-      fetchChatUsers();
     } catch (error) {
       markMessageFailed(tempId);
       setStatus(error.message || "Message failed.");
       setMessageText(text);
       setMessageMedia(mediaPayload);
       setReplyToMessage(replyTarget);
+      fetchChatUsers();
     }
   };
 
@@ -1330,7 +1392,10 @@ function RightHome() {
                     <div className="min-w-0">
                       <p className="text-white text-sm font-semibold truncate">{user.userName}</p>
                       <p className="text-gray-500 text-xs truncate">
-                        {isUserOnline(user) ? "Online" : showFollowBack ? "Follows you" : "Open chat"}
+                        {getChatPreviewText(
+                          user,
+                          isUserOnline(user) ? "Online" : showFollowBack ? "Follows you" : "Open chat"
+                        )}
                       </p>
                     </div>
                   </button>

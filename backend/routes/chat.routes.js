@@ -5,6 +5,7 @@ import {
   deleteMessage,
   getChatUsers,
   getMessages,
+  markMessagesRead,
   reactToMessage,
   searchConnectedChatUsers,
   sendMessage,
@@ -25,6 +26,7 @@ chatRouter.post(
   uploadChatMedia
 );
 chatRouter.get("/:userId/messages", isAuth, getMessages);
+chatRouter.patch("/:userId/messages/read", isAuth, markMessagesRead);
 chatRouter.post("/:userId/messages", isAuth, sendMessage);
 chatRouter.post("/:userId/typing", isAuth, sendTypingStatus);
 chatRouter.post("/messages/:messageId/reactions", isAuth, reactToMessage);

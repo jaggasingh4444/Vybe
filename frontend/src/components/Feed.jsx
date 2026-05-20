@@ -70,6 +70,35 @@ const getChatMediaTileClass = (count, index) => {
 };
 
 const getMessageSenderId = (message) => message?.sender?._id || message?.sender || "";
+const getMessageReceiverId = (message) => message?.receiver?._id || message?.receiver || "";
+const isSameId = (left, right) =>
+  Boolean(left && right) && left.toString() === right.toString();
+const createChatListMessagePreview = (message, currentUserId) => {
+  if (!message?._id) return null;
+
+  const senderId = getMessageSenderId(message);
+  return {
+    _id: message._id,
+    sender: senderId,
+    receiver: getMessageReceiverId(message),
+    text: message.text || "",
+    mediaType: message.mediaType || getMessageAttachments(message)[0]?.mediaType || "",
+    sharedContentType: message.sharedContent?.contentType || "",
+    isMine: isSameId(senderId, currentUserId),
+    createdAt: message.createdAt,
+  };
+};
+const getChatPreviewText = (user, fallbackText) => {
+  const latestMessage = user?.latestMessage;
+  if (!latestMessage) return fallbackText;
+
+  const prefix = latestMessage.isMine ? "You: " : "";
+  if (latestMessage.text) return `${prefix}${latestMessage.text}`;
+  if (latestMessage.mediaType === "video") return `${prefix}Video`;
+  if (latestMessage.mediaType === "image") return `${prefix}Photo`;
+  if (latestMessage.sharedContentType) return `${prefix}Shared ${latestMessage.sharedContentType}`;
+  return `${prefix}Message`;
+};
 const getReplyPreviewText = (reply) => {
   if (!reply) return "";
   if (reply.text) return reply.text;
@@ -154,11 +183,8 @@ const getStoryAuthorId = (story) => {
 const sortStoriesByCreatedAt = (a, b) =>
   new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
 
-const getMessageReceiverId = (message) => message?.receiver?._id || message?.receiver || "";
 const getMessageClientId = (message) => message?.clientId || "";
 const getMessageReplyId = (message) => message?.replyTo?.messageId || "";
-const isSameId = (left, right) =>
-  Boolean(left && right) && left.toString() === right.toString();
 const MessageStatusTicks = ({ message }) => {
   if (!message || message.failed) return null;
 
@@ -536,6 +562,7 @@ function Feed() {
   const [feedVideosMuted, setFeedVideosMuted] = useState(true);
   const feedRootRef = useRef(null);
   const feedVideosMutedRef = useRef(true);
+  const onlineUserIdsRef = useRef(new Set());
   const pendingLikeIdsRef = useRef(new Set());
   const pendingCommentIdsRef = useRef(new Set());
   const pendingReplyIdsRef = useRef(new Set());
@@ -550,7 +577,7 @@ function Feed() {
     const otherUserId = otherUser?._id?.toString();
     if (!otherUserId || otherUserId === currentUserId) return;
 
-    const selectedId = selectedMobileChat?._id?.toString();
+    const selectedId = selectedMobileChatRef.current?._id?.toString();
     const isIncoming = receiverId === currentUserId;
     const isOpenChat = selectedId === otherUserId;
 
@@ -568,7 +595,8 @@ function Feed() {
         _id: otherUserId,
         profileImage: otherUser.profileImage || existing?.profileImage || "",
         unreadCount,
-        isOnline: existing?.isOnline || onlineUserIds.has(otherUserId),
+        isOnline: existing?.isOnline || onlineUserIdsRef.current.has(otherUserId),
+        latestMessage: createChatListMessagePreview(message, currentUserId),
       };
 
       return [
@@ -576,9 +604,10 @@ function Feed() {
         ...currentUsers.filter((user) => user._id?.toString() !== otherUserId),
       ];
     });
-  }, [onlineUserIds, selectedMobileChat?._id, userData?._id]);
+  }, [userData?._id]);
   const pendingContentDeleteIdsRef = useRef(new Set());
   const pendingCommentDeleteIdsRef = useRef(new Set());
+  const selectedMobileChatRef = useRef(null);
   const mobileMessagesRef = useRef([]);
   const mobileMessageSyncingRef = useRef(false);
   const mobileMessagesListRef = useRef(null);
@@ -925,6 +954,14 @@ function Feed() {
   }, [mobileMessages]);
 
   useEffect(() => {
+    selectedMobileChatRef.current = selectedMobileChat;
+  }, [selectedMobileChat]);
+
+  useEffect(() => {
+    onlineUserIdsRef.current = onlineUserIds;
+  }, [onlineUserIds]);
+
+  useEffect(() => {
     const timer = window.setInterval(() => {
       setStoryClock(Date.now());
     }, 60 * 1000);
@@ -1095,6 +1132,32 @@ function Feed() {
       }
     }
   };
+
+  const markMobileOpenChatRead = useCallback(async (userId) => {
+    if (!userId) return;
+
+    try {
+      const res = await fetch(apiUrl(`/api/chat/${userId}/messages/read`), {
+        method: "PATCH",
+        credentials: "include",
+        headers: getTabAuthHeaders(),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.messageIds?.length) {
+        const seenIds = new Set(data.messageIds.map((id) => id.toString()));
+        setMobileMessages((current) =>
+          current.map((message) =>
+            seenIds.has(message._id?.toString())
+              ? { ...message, read: true, readAt: data.readAt }
+              : message
+          )
+        );
+      }
+    } catch {
+      // The next realtime/read refresh will repair receipt state if this tiny request fails.
+    }
+  }, []);
 
   useEffect(() => {
     const query = mobileChatSearch.trim();
@@ -1277,18 +1340,16 @@ function Feed() {
 
         if (data.type === "messages:delivered") {
           markMobileMessagesDelivered(data.messageIds, data.deliveredAt);
-          fetchMobileChatUsers();
           return;
         }
 
         if (data.type === "messages:seen") {
           markMobileMessagesSeen(data.messageIds, data.readAt);
-          fetchMobileChatUsers();
           return;
         }
 
         if (data.type === "conversation:delete") {
-          const selectedId = selectedMobileChat?._id;
+          const selectedId = selectedMobileChatRef.current?._id;
           const currentUserId = userData?._id;
           const deletedUserIds = data.userIds || [];
           const isOpenChatDeleted =
@@ -1314,7 +1375,7 @@ function Feed() {
         setMobileTypingIndicator(incoming.sender?._id, false);
         syncMobileChatUserFromMessage(incoming);
 
-        const selectedId = selectedMobileChat?._id;
+        const selectedId = selectedMobileChatRef.current?._id;
         const currentUserId = userData?._id;
         const belongsToOpenChat =
           selectedId &&
@@ -1326,11 +1387,9 @@ function Feed() {
           setMobileMessages((current) => mergeMessageIntoList(current, incoming));
 
           if (incoming.receiver?._id === currentUserId) {
-            fetchMobileMessages(selectedId, { silent: true });
+            markMobileOpenChatRead(selectedId);
           }
         }
-
-        fetchMobileChatUsers();
       } catch {
         fetchMobileChatUsers();
       }
@@ -1341,7 +1400,7 @@ function Feed() {
     };
 
     return () => events.close();
-  }, [isMobile, selectedMobileChat?._id, setMobileTypingIndicator, syncMobileChatUserFromMessage, userData?._id]);
+  }, [isMobile, markMobileOpenChatRead, setMobileTypingIndicator, syncMobileChatUserFromMessage, userData?._id]);
 
   useEffect(() => {
     if (!isMobile || activeMobileTab !== "chat" || !selectedMobileChat?._id) return undefined;
@@ -2676,7 +2735,14 @@ function Feed() {
   }, []);
 
   const openMobileChat = async (user) => {
-    setSelectedMobileChat(user);
+    const chatUser = { ...user, unreadCount: 0 };
+    setSelectedMobileChat(chatUser);
+    selectedMobileChatRef.current = chatUser;
+    setMobileChatUsers((currentUsers) =>
+      currentUsers.map((currentUser) =>
+        currentUser._id === user._id ? { ...currentUser, unreadCount: 0 } : currentUser
+      )
+    );
     setMobileMessages([]);
     setMobileChatStatus("");
     setMobileConversationMenuOpen(false);
@@ -2684,7 +2750,7 @@ function Feed() {
     setMobileMessageMedia([]);
     setMobileReactionMenuMessageId("");
     await fetchMobileMessages(user._id);
-    await fetchMobileChatUsers();
+    fetchMobileChatUsers();
   };
 
   const openShareSheet = (item) => {
@@ -2770,6 +2836,7 @@ function Feed() {
     };
 
     setMobileMessages((current) => [...current, optimisticMessage]);
+    syncMobileChatUserFromMessage(optimisticMessage);
     setMobileMessageText("");
     setMobileMessageMedia([]);
     setMobileReplyToMessage(null);
@@ -2806,9 +2873,9 @@ function Feed() {
       if (!res.ok) throw new Error(data.message || "Message failed");
 
       saveConfirmedMobileMessage(data, tempId);
+      syncMobileChatUserFromMessage(data);
       setMobileChatEmojiOpen(false);
       setMobileChatStatus("");
-      fetchMobileChatUsers();
       focusMobileMessageInput();
     } catch (error) {
       markMobileMessageFailed(tempId);
@@ -2816,6 +2883,7 @@ function Feed() {
       setMobileMessageText(text);
       setMobileMessageMedia(mediaPayload);
       setMobileReplyToMessage(replyTarget);
+      fetchMobileChatUsers();
       focusMobileMessageInput();
     }
   };
@@ -4507,7 +4575,10 @@ function Feed() {
                             <div className="min-w-0">
                               <p className="text-white font-semibold truncate">{chatUser.userName}</p>
                               <p className="text-gray-500 text-sm truncate">
-                                {isUserOnline(chatUser) ? "Online" : showFollowBack ? "Follows you" : "Open chat"}
+                                {getChatPreviewText(
+                                  chatUser,
+                                  isUserOnline(chatUser) ? "Online" : showFollowBack ? "Follows you" : "Open chat"
+                                )}
                               </p>
                             </div>
                           </button>
