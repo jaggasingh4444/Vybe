@@ -532,7 +532,7 @@ function Feed() {
   const [mobileConversationMenuOpen, setMobileConversationMenuOpen] = useState(false);
   const [mobileChatListMenuUserId, setMobileChatListMenuUserId] = useState("");
   const [mobileChatViewportHeight, setMobileChatViewportHeight] = useState(0);
-  const [mobileKeyboardOpen, setMobileKeyboardOpen] = useState(false);
+  const [, setMobileKeyboardOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(() =>
     typeof window === "undefined" ? false : window.matchMedia("(max-width: 1023px)").matches
   );
@@ -3700,7 +3700,7 @@ function Feed() {
 
   const activeChatMedia = chatMediaViewer?.attachments?.[chatMediaViewer.index];
   const chatMediaTotal = chatMediaViewer?.attachments?.length || 0;
-  const hideMobileChatNav = Boolean(isMobileChatTab && selectedMobileChat && mobileKeyboardOpen);
+  const hideMobileChatNav = Boolean(isMobileChatTab && selectedMobileChat);
   const mobileChatViewportStyle =
     isMobileChatTab && mobileChatViewportHeight
       ? { height: `${mobileChatViewportHeight}px` }
@@ -3708,6 +3708,12 @@ function Feed() {
   const mobileChatContentStyle = isMobileChatTab
     ? { paddingBottom: hideMobileChatNav ? "0.75rem" : "4.75rem" }
     : undefined;
+  const mobileChatWallpaperStyle = {
+    backgroundColor: "#0b141a",
+    backgroundImage:
+      "radial-gradient(circle at 18px 18px, rgba(255,255,255,0.045) 1.2px, transparent 1.3px), radial-gradient(circle at 58px 42px, rgba(0,168,132,0.06) 1.2px, transparent 1.4px), linear-gradient(135deg, rgba(255,255,255,0.025) 8%, transparent 8%, transparent 50%, rgba(255,255,255,0.02) 50%, rgba(255,255,255,0.02) 58%, transparent 58%)",
+    backgroundSize: "84px 84px, 96px 96px, 72px 72px",
+  };
   const showChatMediaStep = (direction) => {
     setChatMediaViewer((current) => {
       if (!current?.attachments?.length) return current;
@@ -3732,7 +3738,11 @@ function Feed() {
           : "min-h-[100vh] lg:h-[100vh] lg:overflow-y-auto"
       }`}
     >
-      <div className="sticky top-0 z-20 shrink-0 bg-black/95 border-b border-gray-900 px-5 py-4 flex items-center justify-between">
+      <div
+        className={`sticky top-0 z-20 shrink-0 bg-black/95 border-b border-gray-900 px-5 py-4 items-center justify-between ${
+          isMobileChatTab && selectedMobileChat ? "hidden" : "flex"
+        }`}
+      >
         <div className="min-w-0 flex items-center gap-3">
           {activeMobileTab === "profile" ? (
             <button
@@ -4350,9 +4360,12 @@ function Feed() {
             }`}
           >
             {selectedMobileChat ? (
-              <div className="flex h-full min-h-0 flex-col overflow-hidden bg-black">
-                <div className="relative h-16 shrink-0 px-3 flex items-center justify-between border-b border-gray-900 bg-black/95">
-                  <div className="flex min-w-0 items-center gap-2">
+              <div
+                className="flex h-full min-h-0 flex-col overflow-hidden text-white"
+                style={mobileChatWallpaperStyle}
+              >
+                <div className="relative h-[70px] shrink-0 px-3 flex items-center justify-between bg-[#0b141a]/95 shadow-lg shadow-black/20">
+                  <div className="flex min-w-0 items-center gap-2.5">
                     <button
                       type="button"
                       onClick={() => {
@@ -4360,7 +4373,7 @@ function Feed() {
                         setMobileConversationMenuOpen(false);
                         setMobileMessageMenuId("");
                       }}
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-gray-300 active:bg-[#111]"
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-gray-100 active:bg-white/10"
                       aria-label="Back to chats"
                     >
                       <FiArrowLeft className="text-xl" />
@@ -4374,18 +4387,18 @@ function Feed() {
                       <img
                         src={mediaUrl(selectedMobileChat.profileImage) || dp}
                         alt={selectedMobileChat.userName}
-                        className="w-9 h-9 rounded-full object-cover"
+                        className="w-10 h-10 rounded-full object-cover"
                         onError={(event) => {
                           event.currentTarget.src = dp;
                         }}
                       />
                       {isUserOnline(selectedMobileChat) ? (
-                        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-black" />
+                        <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-[#25d366] border-2 border-[#0b141a]" />
                       ) : null}
                     </span>
                     <div className="min-w-0">
-                      <p className="text-white text-sm font-semibold truncate">{selectedMobileChat.userName}</p>
-                      <p className="text-gray-500 text-xs truncate">
+                      <p className="text-white text-[15px] font-semibold truncate">{selectedMobileChat.userName}</p>
+                      <p className="text-[#aebac1] text-xs truncate">
                         {isUserOnline(selectedMobileChat) ? "Online" : "Offline"}
                       </p>
                     </div>
@@ -4395,19 +4408,19 @@ function Feed() {
                     <button
                       type="button"
                       onClick={() => setMobileConversationMenuOpen((open) => !open)}
-                      className="w-10 h-10 rounded-full bg-[#111] text-gray-300 flex items-center justify-center active:scale-95 transition"
+                      className="w-11 h-11 rounded-full bg-white/5 text-gray-100 flex items-center justify-center active:scale-95 active:bg-white/10 transition"
                       aria-label="Conversation options"
                     >
-                      <FiMoreVertical />
+                      <FiMoreVertical className="text-xl" />
                     </button>
                   </div>
 
                   {mobileConversationMenuOpen ? (
-                    <div className="absolute right-3 top-14 z-10 w-52 rounded-xl border border-gray-800 bg-[#080808] p-1 shadow-2xl">
+                    <div className="absolute right-3 top-14 z-10 w-52 rounded-xl border border-white/10 bg-[#111b21] p-1 shadow-2xl">
                       <button
                         type="button"
                         onClick={() => deleteMobileConversation(selectedMobileChat._id)}
-                        className="w-full h-10 rounded-md px-3 text-left text-sm text-red-400 hover:bg-[#151515]"
+                        className="w-full h-10 rounded-md px-3 text-left text-sm text-red-300 hover:bg-white/5"
                       >
                         Delete conversation
                       </button>
@@ -4417,7 +4430,7 @@ function Feed() {
 
                 <div
                   ref={mobileMessagesListRef}
-                  className="min-h-0 flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3 overscroll-contain bg-black"
+                  className="min-h-0 flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-2.5 overscroll-contain"
                 >
                   {mobileMessages.length > 0 ? (
                     mobileMessages.map((chatMessage) => {
@@ -4438,7 +4451,7 @@ function Feed() {
                             event.preventDefault();
                             openMobileMessageActions(chatMessage);
                           }}
-                          className={`relative max-w-[78%] select-none rounded-[22px] text-[15px] leading-snug shadow-sm transition-transform active:scale-[0.99] ${
+                          className={`relative max-w-[78%] select-none rounded-[18px] text-[15px] leading-snug shadow-sm shadow-black/20 transition-transform active:scale-[0.99] ${
                             mediaOnly ? "p-0" : "px-4 py-2.5"
                           } ${
                             mediaOnly
@@ -4446,10 +4459,10 @@ function Feed() {
                                   chatMessage.pending ? "opacity-70" : ""
                                 }`
                               : mine
-                                ? `self-end bg-blue-600 text-white rounded-br-md ${
+                                ? `self-end bg-[#005c4b] text-white rounded-br-md ${
                                     chatMessage.failed ? "bg-red-600" : chatMessage.pending ? "opacity-70" : ""
                                   }`
-                                : "self-start bg-[#181818] text-gray-100 rounded-bl-md"
+                                : "self-start bg-[#202c33] text-gray-100 rounded-bl-md"
                           } ${mobileMessageMenuId === chatMessage._id ? "ring-1 ring-white/20" : ""}`}
                         >
                           {renderChatReplyPreview(chatMessage)}
@@ -4468,12 +4481,12 @@ function Feed() {
                       );
                     })
                   ) : !selectedMobileChatTyping ? (
-                    <div className="h-full flex items-center justify-center text-gray-500 text-sm text-center">
+                    <div className="h-full flex items-center justify-center text-[#aebac1] text-sm text-center">
                       Say hi to start the conversation.
                     </div>
                   ) : null}
                   {selectedMobileChatTyping ? (
-                    <div className="self-start rounded-2xl rounded-bl-sm bg-[#171717] px-3 py-2 text-xs font-semibold text-gray-300">
+                    <div className="self-start rounded-2xl rounded-bl-sm bg-[#202c33] px-3 py-2 text-xs font-semibold text-[#d1d7db]">
                       Typing...
                     </div>
                   ) : null}
@@ -4481,22 +4494,22 @@ function Feed() {
 
                 <form
                   onSubmit={sendMobileMessage}
-                  className="relative shrink-0 border-t border-gray-900 bg-black/95 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+                  className="relative shrink-0 bg-[#0b141a]/95 px-3 py-2 pb-[max(0.65rem,env(safe-area-inset-bottom))]"
                 >
                   {mobileReplyToMessage ? (
-                    <div className="mb-2 flex items-center justify-between gap-3 rounded-2xl border border-gray-900 bg-[#080808] px-3 py-2">
-                      <div className="min-w-0 border-l-2 border-blue-500 pl-2">
+                    <div className="mb-2 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#111b21] px-3 py-2">
+                      <div className="min-w-0 border-l-2 border-[#00a884] pl-2">
                         <p className="text-xs font-semibold text-white">
                           Replying to {getMessageSenderId(mobileReplyToMessage) === userData?._id ? "your message" : mobileReplyToMessage.sender?.userName || "user"}
                         </p>
-                        <p className="truncate text-xs text-gray-500">
+                        <p className="truncate text-xs text-[#8696a0]">
                           {getReplyPreviewText(createMessageReplySnapshot(mobileReplyToMessage))}
                         </p>
                       </div>
                       <button
                         type="button"
                         onClick={() => setMobileReplyToMessage(null)}
-                        className="shrink-0 text-gray-500"
+                        className="shrink-0 text-[#aebac1]"
                         aria-label="Cancel reply"
                       >
                         <FiX />
@@ -4506,7 +4519,7 @@ function Feed() {
                   {mobileMessageMedia.length > 0 ? (
                     <div className="mb-2 flex gap-2 overflow-x-auto pb-1">
                       {mobileMessageMedia.map((item, index) => (
-                        <div key={`${item.name}-${index}`} className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-[#111]">
+                        <div key={`${item.name}-${index}`} className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-[#202c33]">
                           {item.mediaType === "video" ? (
                             <video src={mediaUrl(item.media)} muted playsInline preload="metadata" className="h-full w-full object-cover" />
                           ) : (
@@ -4525,24 +4538,25 @@ function Feed() {
                     </div>
                   ) : null}
                   {mobileChatEmojiOpen ? (
-                    <div className="absolute bottom-16 left-3 z-10 grid grid-cols-6 gap-1 rounded-2xl border border-gray-800 bg-[#080808] p-2 shadow-2xl">
+                    <div className="absolute bottom-16 left-3 z-10 grid grid-cols-6 gap-1 rounded-2xl border border-white/10 bg-[#111b21] p-2 shadow-2xl">
                       {EMOJI_OPTIONS.map((emoji) => (
                         <button
                           key={emoji}
                           type="button"
                           onClick={() => setMobileMessageText((text) => `${text}${emoji}`)}
-                          className="w-8 h-8 rounded-md text-lg hover:bg-[#151515]"
+                          className="w-8 h-8 rounded-md text-lg hover:bg-white/5"
                         >
                           {emoji}
                         </button>
                       ))}
                     </div>
                   ) : null}
-                  <div className="flex items-center gap-1.5 rounded-full border border-gray-900 bg-[#101010] p-1.5 shadow-lg shadow-black/20">
+                  <div className="flex items-center gap-1.5">
+                    <div className="min-w-0 flex flex-1 items-center gap-1 rounded-full bg-[#202c33] px-2 py-1.5 shadow-lg shadow-black/20">
                   <button
                     type="button"
                     onClick={() => setMobileChatEmojiOpen((open) => !open)}
-                    className="w-10 h-10 shrink-0 rounded-full text-gray-300 flex items-center justify-center active:bg-white/10"
+                    className="w-9 h-9 shrink-0 rounded-full text-[#aebac1] flex items-center justify-center active:bg-white/10"
                     aria-label="Add emoji"
                   >
                     <FiSmile />
@@ -4558,10 +4572,18 @@ function Feed() {
                   <button
                     type="button"
                     onClick={() => mobileMessageMediaInputRef.current?.click()}
-                    className="w-10 h-10 shrink-0 rounded-full text-gray-300 flex items-center justify-center active:bg-white/10"
+                    className="w-9 h-9 shrink-0 rounded-full text-[#aebac1] flex items-center justify-center active:bg-white/10"
                     aria-label="Send photo or video"
                   >
                     <FiImage />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => mobileMessageMediaInputRef.current?.click()}
+                    className="w-9 h-9 shrink-0 rounded-full text-[#aebac1] flex items-center justify-center active:bg-white/10"
+                    aria-label="Open camera media"
+                  >
+                    <FiCamera />
                   </button>
                   <input
                     ref={mobileMessageInputRef}
@@ -4591,17 +4613,18 @@ function Feed() {
                       }, 160);
                     }}
                     placeholder="Message..."
-                    className="min-w-0 flex-1 h-10 bg-transparent text-white px-2 outline-none placeholder:text-gray-600"
+                    className="min-w-0 flex-1 h-10 bg-transparent text-[16px] text-[#e9edef] px-1 outline-none placeholder:text-[#8696a0]"
                     maxLength={1000}
                   />
+                    </div>
                   <button
                     type="button"
                     onPointerDown={handleMobileSendPointerDown}
                     onClick={handleMobileSendClick}
-                    className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center transition active:scale-95 disabled:opacity-60 ${
+                    className={`w-12 h-12 shrink-0 rounded-full flex items-center justify-center text-xl shadow-lg shadow-black/20 transition active:scale-95 disabled:opacity-70 ${
                       mobileMessageText.trim() || mobileMessageMedia.length > 0
-                        ? "bg-blue-600 text-white"
-                        : "bg-[#2a2a2a] text-gray-500"
+                        ? "bg-[#00a884] text-[#07100f]"
+                        : "bg-[#00a884] text-[#07100f]"
                     }`}
                     disabled={!mobileMessageText.trim() && mobileMessageMedia.length === 0}
                     aria-label="Send message"
