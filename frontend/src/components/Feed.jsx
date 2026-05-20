@@ -26,6 +26,7 @@ const TYPING_VISIBLE_MS = 3000;
 const CONTENT_MEDIA_UPLOAD_TIMEOUT_MS = 120000;
 const formatUnreadCount = (count) => (count > 10 ? "10+" : count);
 const shouldAutoDismissStatus = (status) => /\b(uploaded|deleted)\b/i.test(status || "");
+const isInternalAiSetupStatus = (status) => /OPENAI_API_KEY/i.test(status || "");
 const getContentKey = (item) => (item?._id && item?.type ? `${item.type}-${item._id}` : "");
 const getReplyKey = (item, commentId) => `${getContentKey(item)}-${commentId}-reply`;
 const isTextPost = (item) => item?.type === "post" && item?.mediaType === "text";
@@ -881,9 +882,6 @@ function Feed() {
       if (!res.ok) throw new Error(data.message || "AI replies failed.");
 
       setAiReplySuggestions(data.suggestions || []);
-      if (data.message) {
-        setMobileChatStatus(data.message);
-      }
     } catch (error) {
       setMobileChatStatus(error.message || "AI replies failed.");
     } finally {
@@ -4869,7 +4867,7 @@ function Feed() {
                 )}
               </>
             )}
-            {mobileChatStatus ? (
+            {mobileChatStatus && !isInternalAiSetupStatus(mobileChatStatus) ? (
               <p className={`text-sm ${shouldAutoDismissStatus(mobileChatStatus) ? "text-green-400" : "text-red-400"}`}>
                 {mobileChatStatus}
               </p>
