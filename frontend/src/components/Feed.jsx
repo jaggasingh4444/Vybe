@@ -460,6 +460,8 @@ function Feed() {
   const [mode, setMode] = useState("post");
   const [caption, setCaption] = useState("");
   const [captionEmojiOpen, setCaptionEmojiOpen] = useState(false);
+  const [aiCaptionLoading, setAiCaptionLoading] = useState(false);
+  const [aiCaptionSuggestions, setAiCaptionSuggestions] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
   const [preview, setPreview] = useState("");
   const [feed, setFeed] = useState([]);
@@ -526,6 +528,8 @@ function Feed() {
   const [mobileChatStatus, setMobileChatStatus] = useState("");
   const [mobileChatEmojiOpen, setMobileChatEmojiOpen] = useState(false);
   const [mobileMessageMenuId, setMobileMessageMenuId] = useState("");
+  const [aiReplyLoading, setAiReplyLoading] = useState(false);
+  const [aiReplySuggestions, setAiReplySuggestions] = useState([]);
   const [chatMediaViewer, setChatMediaViewer] = useState(null);
   const [mobileTypingUserIds, setMobileTypingUserIds] = useState(() => new Set());
   const [mobileBusyUserId, setMobileBusyUserId] = useState("");
@@ -839,6 +843,51 @@ function Feed() {
       setMobileMessageMedia((current) => [...current, ...mediaItems]);
     } catch {
       setMobileChatStatus("Unable to read media.");
+    }
+  };
+
+  const generateAiReplies = async () => {
+    if (!selectedMobileChat?._id || aiReplyLoading) return;
+
+    setAiReplyLoading(true);
+    setAiReplySuggestions([]);
+    setMobileChatStatus("");
+
+    const recentMessages = mobileMessages
+      .filter((message) => !message.pending && !message.failed)
+      .slice(-8)
+      .map((message) => ({
+        mine: isSameId(getMessageSenderId(message), userData?._id),
+        text: message.text || "",
+        mediaType: message.mediaType || getMessageAttachments(message)[0]?.mediaType || "",
+        sharedContentType: message.sharedContent?.contentType || "",
+      }));
+
+    try {
+      const { res, data } = await fetchJsonWithTimeout(
+        apiUrl("/api/ai/chat-replies"),
+        {
+          method: "POST",
+          credentials: "include",
+          headers: getTabAuthHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({
+            receiverName: selectedMobileChat.userName,
+            messages: recentMessages,
+          }),
+        },
+        "AI replies are taking too long. Please try again."
+      );
+
+      if (!res.ok) throw new Error(data.message || "AI replies failed.");
+
+      setAiReplySuggestions(data.suggestions || []);
+      if (data.message) {
+        setMobileChatStatus(data.message);
+      }
+    } catch (error) {
+      setMobileChatStatus(error.message || "AI replies failed.");
+    } finally {
+      setAiReplyLoading(false);
     }
   };
 
@@ -1531,6 +1580,7 @@ function Feed() {
     setMobileTypingUserIds(new Set());
     setMobileMessageMenuId("");
     setMobileReplyToMessage(null);
+    setAiReplySuggestions([]);
   }, [selectedMobileChat?._id, stopMobileOutgoingTyping]);
 
   useEffect(() => () => {
@@ -1557,6 +1607,7 @@ function Feed() {
     setMode(nextMode);
     clearSelectedFile();
     setCaptionEmojiOpen(false);
+    setAiCaptionSuggestions([]);
     setMessage("");
   };
 
@@ -1565,6 +1616,40 @@ function Feed() {
       if (currentCaption.length + emoji.length > 220) return currentCaption;
       return `${currentCaption}${emoji}`;
     });
+  };
+
+  const generateAiCaptions = async () => {
+    if (aiCaptionLoading || uploading) return;
+
+    setAiCaptionLoading(true);
+    setAiCaptionSuggestions([]);
+    setMessage("");
+
+    try {
+      const { res, data } = await fetchJsonWithTimeout(
+        apiUrl("/api/ai/captions"),
+        {
+          method: "POST",
+          credentials: "include",
+          headers: getTabAuthHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({
+            mode,
+            caption,
+            mediaType: selectedMediaType || (selectedFile ? "media" : "text"),
+          }),
+        },
+        "AI captions are taking too long. Please try again."
+      );
+
+      if (!res.ok) throw new Error(data.message || "AI caption failed.");
+
+      setAiCaptionSuggestions(data.suggestions || []);
+      setMessage(data.message || "AI captions ready.");
+    } catch (error) {
+      setMessage(error.message || "AI caption failed.");
+    } finally {
+      setAiCaptionLoading(false);
+    }
   };
 
   const handleFileChange = (event) => {
@@ -2888,6 +2973,7 @@ function Feed() {
     setMobileMessageMedia([]);
     setMobileReplyToMessage(null);
     setMobileMessageMenuId("");
+    setAiReplySuggestions([]);
     setMobileChatStatus("");
     stopMobileOutgoingTyping(receiver._id);
     focusMobileMessageInput();
@@ -4537,6 +4623,30 @@ function Feed() {
                       ))}
                     </div>
                   ) : null}
+                  <div className="mb-2 flex items-center gap-2 overflow-x-auto pb-1">
+                    <button
+                      type="button"
+                      onClick={generateAiReplies}
+                      disabled={aiReplyLoading}
+                      className="h-8 shrink-0 rounded-full bg-[#00a884] px-3 text-xs font-semibold text-[#07100f] disabled:opacity-60"
+                    >
+                      {aiReplyLoading ? "Thinking..." : "AI replies"}
+                    </button>
+                    {aiReplySuggestions.map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        type="button"
+                        onClick={() => {
+                          setMobileMessageText(suggestion);
+                          setAiReplySuggestions([]);
+                          focusMobileMessageInput();
+                        }}
+                        className="h-8 shrink-0 rounded-full bg-[#202c33] px-3 text-xs font-semibold text-[#e9edef] active:bg-white/10"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
                   {mobileChatEmojiOpen ? (
                     <div className="absolute bottom-16 left-3 z-10 grid grid-cols-6 gap-1 rounded-2xl border border-white/10 bg-[#111b21] p-2 shadow-2xl">
                       {EMOJI_OPTIONS.map((emoji) => (
@@ -5049,6 +5159,23 @@ function Feed() {
                 </button>
               </div>
 
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-900 bg-[#080808] px-3 py-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-white">AI caption helper</p>
+                  <p className="truncate text-xs text-gray-500">
+                    Generate caption ideas for this {mode}.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={generateAiCaptions}
+                  disabled={aiCaptionLoading || uploading}
+                  className="h-9 shrink-0 rounded-md bg-white px-3 text-sm font-semibold text-black disabled:opacity-60"
+                >
+                  {aiCaptionLoading ? "Thinking..." : "Generate"}
+                </button>
+              </div>
+
               <div className="relative flex items-start gap-2">
                 {captionEmojiOpen ? (
                   <div className="absolute bottom-[6.5rem] left-0 z-10 grid grid-cols-6 gap-1 rounded-lg border border-gray-800 bg-[#080808] p-2 shadow-2xl">
@@ -5082,6 +5209,27 @@ function Feed() {
                   maxLength={CAPTION_LIMIT}
                 />
               </div>
+
+              {aiCaptionSuggestions.length > 0 ? (
+                <div className="flex flex-col gap-2 rounded-lg border border-gray-900 bg-[#080808] p-2">
+                  <p className="px-1 text-xs font-semibold text-gray-400">Tap to use</p>
+                  {aiCaptionSuggestions.map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      type="button"
+                      onClick={() => {
+                        setCaption(suggestion.slice(0, CAPTION_LIMIT));
+                        setAiCaptionSuggestions([]);
+                        setMessage("AI caption added.");
+                      }}
+                      disabled={uploading}
+                      className="rounded-md bg-[#111] px-3 py-2 text-left text-sm text-gray-200 hover:bg-[#171717] disabled:opacity-60"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
 
               {preview ? (
                 <div className="relative rounded-lg overflow-hidden border border-gray-800 bg-[#101010]">

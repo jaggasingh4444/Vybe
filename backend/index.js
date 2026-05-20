@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 import authRouter from "./routes/auth.routes.js";
+import aiRouter from "./routes/ai.routes.js";
 import chatRouter from "./routes/chat.routes.js";
 import contentRouter from "./routes/content.routes.js";
 import userRouter from "./routes/user.routes.js";
@@ -44,6 +45,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Routes
 app.use("/api/auth", authRouter);
+app.use("/api/ai", aiRouter);
 app.use("/api/chat", chatRouter);
 app.use("/api/content", contentRouter);
 app.use("/api/users", userRouter);
