@@ -525,7 +525,6 @@ function Feed() {
   const [mobileReplyToMessage, setMobileReplyToMessage] = useState(null);
   const [mobileChatStatus, setMobileChatStatus] = useState("");
   const [mobileChatEmojiOpen, setMobileChatEmojiOpen] = useState(false);
-  const [mobileReactionMenuMessageId, setMobileReactionMenuMessageId] = useState("");
   const [mobileMessageMenuId, setMobileMessageMenuId] = useState("");
   const [chatMediaViewer, setChatMediaViewer] = useState(null);
   const [mobileTypingUserIds, setMobileTypingUserIds] = useState(() => new Set());
@@ -1515,7 +1514,6 @@ function Feed() {
   useEffect(() => {
     stopMobileOutgoingTyping();
     setMobileTypingUserIds(new Set());
-    setMobileReactionMenuMessageId("");
     setMobileMessageMenuId("");
     setMobileReplyToMessage(null);
   }, [selectedMobileChat?._id, stopMobileOutgoingTyping]);
@@ -2783,7 +2781,6 @@ function Feed() {
     setMobileConversationMenuOpen(false);
     setMobileChatEmojiOpen(false);
     setMobileMessageMedia([]);
-    setMobileReactionMenuMessageId("");
     await fetchMobileMessages(user._id);
     fetchMobileChatUsers();
   };
@@ -2968,7 +2965,7 @@ function Feed() {
   const reactToMobileMessage = async (messageId, emoji) => {
     if (!messageId || messageId.startsWith("temp-")) return;
 
-    setMobileReactionMenuMessageId("");
+    setMobileMessageMenuId("");
 
     try {
       const res = await fetch(apiUrl(`/api/chat/messages/${messageId}/reactions`), {
@@ -4013,7 +4010,9 @@ function Feed() {
           isMobileReelFeed
             ? "px-0 py-0 gap-0"
             : isMobileChatTab
-              ? "flex-1 min-h-0 px-3 pt-3 gap-0 overflow-hidden"
+              ? selectedMobileChat
+                ? "flex-1 min-h-0 px-0 pt-0 gap-0 overflow-hidden"
+                : "flex-1 min-h-0 px-4 pt-4 gap-4 overflow-hidden"
               : "px-4 py-5 gap-6"
         }`}
       >
@@ -4228,8 +4227,21 @@ function Feed() {
             }`}
           >
             {selectedMobileChat ? (
-              <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-gray-900 bg-[#050505]">
-                <div className="relative h-14 shrink-0 px-3 flex items-center justify-between border-b border-gray-900">
+              <div className="flex h-full min-h-0 flex-col overflow-hidden bg-black">
+                <div className="relative h-16 shrink-0 px-3 flex items-center justify-between border-b border-gray-900 bg-black/95">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedMobileChat(null);
+                        setMobileConversationMenuOpen(false);
+                        setMobileMessageMenuId("");
+                      }}
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-gray-300 active:bg-[#111]"
+                      aria-label="Back to chats"
+                    >
+                      <FiArrowLeft className="text-xl" />
+                    </button>
                   <button
                     type="button"
                     onClick={() => openProfile(selectedMobileChat)}
@@ -4255,27 +4267,20 @@ function Feed() {
                       </p>
                     </div>
                   </button>
+                  </div>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => setMobileConversationMenuOpen((open) => !open)}
-                      className="w-9 h-9 rounded-full bg-[#111] text-gray-300 flex items-center justify-center"
+                      className="w-10 h-10 rounded-full bg-[#111] text-gray-300 flex items-center justify-center active:scale-95 transition"
                       aria-label="Conversation options"
                     >
                       <FiMoreVertical />
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedMobileChat(null)}
-                      className="w-9 h-9 rounded-full bg-[#111] text-gray-300 flex items-center justify-center"
-                      aria-label="Close chat"
-                    >
-                      <FiX />
-                    </button>
                   </div>
 
                   {mobileConversationMenuOpen ? (
-                    <div className="absolute right-3 top-12 z-10 w-52 rounded-lg border border-gray-800 bg-[#080808] p-1 shadow-2xl">
+                    <div className="absolute right-3 top-14 z-10 w-52 rounded-xl border border-gray-800 bg-[#080808] p-1 shadow-2xl">
                       <button
                         type="button"
                         onClick={() => deleteMobileConversation(selectedMobileChat._id)}
@@ -4289,7 +4294,7 @@ function Feed() {
 
                 <div
                   ref={mobileMessagesListRef}
-                  className="min-h-0 flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-2 overscroll-contain"
+                  className="min-h-0 flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3 overscroll-contain bg-black"
                 >
                   {mobileMessages.length > 0 ? (
                     mobileMessages.map((chatMessage) => {
@@ -4301,18 +4306,26 @@ function Feed() {
                       return (
                         <div
                           key={chatMessage._id}
-                          className={`relative max-w-[82%] rounded-2xl text-sm ${
-                            mediaOnly ? "p-0" : "px-3 py-2"
+                          onClick={(event) => {
+                            const target = event.target;
+                            if (target instanceof Element && target.closest("button,a,input,video")) return;
+                            if (chatMessage.pending || chatMessage.failed) return;
+                            setMobileMessageMenuId((current) =>
+                              current === chatMessage._id ? "" : chatMessage._id
+                            );
+                          }}
+                          className={`relative max-w-[78%] rounded-[22px] text-[15px] leading-snug shadow-sm transition-transform active:scale-[0.99] ${
+                            mediaOnly ? "p-0" : "px-4 py-2.5"
                           } ${
                             mediaOnly
                               ? `bg-transparent text-white ${mine ? "self-end" : "self-start"} ${
                                   chatMessage.pending ? "opacity-70" : ""
                                 }`
                               : mine
-                                ? `self-end bg-blue-600 text-white rounded-br-sm ${
+                                ? `self-end bg-blue-600 text-white rounded-br-md ${
                                     chatMessage.failed ? "bg-red-600" : chatMessage.pending ? "opacity-70" : ""
                                   }`
-                                : "self-start bg-[#171717] text-gray-100 rounded-bl-sm"
+                                : "self-start bg-[#181818] text-gray-100 rounded-bl-md"
                           }`}
                         >
                           {renderChatReplyPreview(chatMessage)}
@@ -4327,89 +4340,55 @@ function Feed() {
                           ) : mine ? (
                             <MessageStatusTicks message={chatMessage} />
                           ) : null}
-                          {!chatMessage.pending && !chatMessage.failed ? (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setMobileMessageMenuId((current) =>
-                                    current === chatMessage._id ? "" : chatMessage._id
-                                  )
-                                }
-                                className={`absolute top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-[#111] text-gray-400 flex items-center justify-center ${
-                                  mine ? "-left-8" : "-right-8"
-                                }`}
-                                aria-label="Message options"
-                              >
-                                <FiMoreVertical />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setMobileReactionMenuMessageId((current) =>
-                                    current === chatMessage._id ? "" : chatMessage._id
-                                  )
-                                }
-                                className={`absolute top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-[#111] text-gray-400 flex items-center justify-center ${
-                                  mine ? "-left-16" : "-right-16"
-                                }`}
-                                aria-label="React to message"
-                              >
-                                <FiSmile />
-                              </button>
-                              {mobileMessageMenuId === chatMessage._id ? (
-                                <div
-                                  className={`absolute top-full z-20 mt-1 min-w-44 overflow-hidden rounded-lg border border-gray-800 bg-[#080808] py-1 text-left shadow-2xl ${
-                                    mine ? "right-0" : "left-0"
-                                  }`}
+                          {!chatMessage.pending && !chatMessage.failed && mobileMessageMenuId === chatMessage._id ? (
+                            <div
+                              className={`mt-2 rounded-2xl border border-white/10 p-2 shadow-xl ${
+                                mine ? "bg-black/20" : "bg-black/40"
+                              }`}
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              <div className="flex gap-1 overflow-x-auto pb-1">
+                                {REACTION_OPTIONS.map((emoji) => (
+                                  <button
+                                    key={emoji}
+                                    type="button"
+                                    onClick={() => reactToMobileMessage(chatMessage._id, emoji)}
+                                    className="h-8 w-8 shrink-0 rounded-full text-base active:bg-white/10"
+                                    aria-label={`React ${emoji}`}
+                                  >
+                                    {emoji}
+                                  </button>
+                                ))}
+                              </div>
+                              <div className="mt-1 flex flex-wrap gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setMobileReplyToMessage(chatMessage);
+                                    setMobileMessageMenuId("");
+                                  }}
+                                  className="h-8 rounded-full bg-white/10 px-3 text-xs font-semibold text-white"
                                 >
+                                  Reply
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => deleteMobileMessage(chatMessage._id, "me")}
+                                  className="h-8 rounded-full bg-white/10 px-3 text-xs font-semibold text-white"
+                                >
+                                  Delete for me
+                                </button>
+                                {mine ? (
                                   <button
                                     type="button"
-                                    onClick={() => {
-                                      setMobileReplyToMessage(chatMessage);
-                                      setMobileMessageMenuId("");
-                                    }}
-                                    className="w-full px-3 py-2 text-left text-xs font-semibold text-gray-200 hover:bg-[#151515]"
+                                    onClick={() => deleteMobileMessage(chatMessage._id, "everyone")}
+                                    className="h-8 rounded-full bg-red-500/15 px-3 text-xs font-semibold text-red-200"
                                   >
-                                    Reply
+                                    Delete for everyone
                                   </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => deleteMobileMessage(chatMessage._id, "me")}
-                                    className="w-full px-3 py-2 text-left text-xs font-semibold text-gray-200 hover:bg-[#151515]"
-                                  >
-                                    Delete for me
-                                  </button>
-                                  {mine ? (
-                                    <button
-                                      type="button"
-                                      onClick={() => deleteMobileMessage(chatMessage._id, "everyone")}
-                                      className="w-full px-3 py-2 text-left text-xs font-semibold text-red-400 hover:bg-[#151515]"
-                                    >
-                                      Delete for everyone
-                                    </button>
-                                  ) : null}
-                                </div>
-                              ) : null}
-                              {mobileReactionMenuMessageId === chatMessage._id ? (
-                                <div
-                                  className={`absolute top-full z-10 mt-1 flex gap-1 rounded-full border border-gray-800 bg-[#080808] p-1 shadow-2xl ${
-                                    mine ? "right-0" : "left-0"
-                                  }`}
-                                >
-                                  {REACTION_OPTIONS.map((emoji) => (
-                                    <button
-                                      key={emoji}
-                                      type="button"
-                                      onClick={() => reactToMobileMessage(chatMessage._id, emoji)}
-                                      className="h-8 w-8 rounded-full text-base hover:bg-[#181818]"
-                                    >
-                                      {emoji}
-                                    </button>
-                                  ))}
-                                </div>
-                              ) : null}
-                            </>
+                                ) : null}
+                              </div>
+                            </div>
                           ) : null}
                         </div>
                       );
@@ -4426,9 +4405,12 @@ function Feed() {
                   ) : null}
                 </div>
 
-                <form onSubmit={sendMobileMessage} className="relative shrink-0 border-t border-gray-900 p-2">
+                <form
+                  onSubmit={sendMobileMessage}
+                  className="relative shrink-0 border-t border-gray-900 bg-black/95 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+                >
                   {mobileReplyToMessage ? (
-                    <div className="mb-2 flex items-center justify-between gap-3 rounded-lg border border-gray-900 bg-[#080808] px-3 py-2">
+                    <div className="mb-2 flex items-center justify-between gap-3 rounded-2xl border border-gray-900 bg-[#080808] px-3 py-2">
                       <div className="min-w-0 border-l-2 border-blue-500 pl-2">
                         <p className="text-xs font-semibold text-white">
                           Replying to {getMessageSenderId(mobileReplyToMessage) === userData?._id ? "your message" : mobileReplyToMessage.sender?.userName || "user"}
@@ -4448,9 +4430,9 @@ function Feed() {
                     </div>
                   ) : null}
                   {mobileMessageMedia.length > 0 ? (
-                    <div className="mb-2 flex gap-2 overflow-x-auto">
+                    <div className="mb-2 flex gap-2 overflow-x-auto pb-1">
                       {mobileMessageMedia.map((item, index) => (
-                        <div key={`${item.name}-${index}`} className="relative h-14 w-14 shrink-0 overflow-hidden rounded-md bg-[#111]">
+                        <div key={`${item.name}-${index}`} className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-[#111]">
                           {item.mediaType === "video" ? (
                             <video src={mediaUrl(item.media)} muted playsInline preload="metadata" className="h-full w-full object-cover" />
                           ) : (
@@ -4469,7 +4451,7 @@ function Feed() {
                     </div>
                   ) : null}
                   {mobileChatEmojiOpen ? (
-                    <div className="absolute bottom-16 left-2 z-10 grid grid-cols-6 gap-1 rounded-lg border border-gray-800 bg-[#080808] p-2 shadow-2xl">
+                    <div className="absolute bottom-16 left-3 z-10 grid grid-cols-6 gap-1 rounded-2xl border border-gray-800 bg-[#080808] p-2 shadow-2xl">
                       {EMOJI_OPTIONS.map((emoji) => (
                         <button
                           key={emoji}
@@ -4482,11 +4464,11 @@ function Feed() {
                       ))}
                     </div>
                   ) : null}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 rounded-full border border-gray-900 bg-[#101010] p-1.5 shadow-lg shadow-black/20">
                   <button
                     type="button"
                     onClick={() => setMobileChatEmojiOpen((open) => !open)}
-                    className="w-11 h-11 rounded-md bg-[#111] text-gray-300 flex items-center justify-center"
+                    className="w-10 h-10 shrink-0 rounded-full text-gray-300 flex items-center justify-center active:bg-white/10"
                     aria-label="Add emoji"
                   >
                     <FiSmile />
@@ -4502,7 +4484,7 @@ function Feed() {
                   <button
                     type="button"
                     onClick={() => mobileMessageMediaInputRef.current?.click()}
-                    className="w-11 h-11 rounded-md bg-[#111] text-gray-300 flex items-center justify-center"
+                    className="w-10 h-10 shrink-0 rounded-full text-gray-300 flex items-center justify-center active:bg-white/10"
                     aria-label="Send photo or video"
                   >
                     <FiImage />
@@ -4535,14 +4517,18 @@ function Feed() {
                       }, 160);
                     }}
                     placeholder="Message..."
-                    className="min-w-0 flex-1 h-11 rounded-md bg-[#111] text-white px-3 outline-none placeholder:text-gray-600"
+                    className="min-w-0 flex-1 h-10 bg-transparent text-white px-2 outline-none placeholder:text-gray-600"
                     maxLength={1000}
                   />
                   <button
                     type="button"
                     onPointerDown={handleMobileSendPointerDown}
                     onClick={handleMobileSendClick}
-                    className="w-11 h-11 rounded-md bg-white text-black flex items-center justify-center disabled:opacity-50"
+                    className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center transition active:scale-95 disabled:opacity-60 ${
+                      mobileMessageText.trim() || mobileMessageMedia.length > 0
+                        ? "bg-blue-600 text-white"
+                        : "bg-[#2a2a2a] text-gray-500"
+                    }`}
                     disabled={!mobileMessageText.trim() && mobileMessageMedia.length === 0}
                     aria-label="Send message"
                   >
