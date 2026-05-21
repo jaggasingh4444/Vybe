@@ -199,7 +199,16 @@ const sendNotificationEvent = (userId, payload) => {
   }
 };
 
-export const createNotification = async ({ recipient, actor, type, contentType, contentId, text = "" }) => {
+export const createNotification = async ({
+  recipient,
+  actor,
+  type,
+  contentType,
+  contentId,
+  commentId = null,
+  replyId = null,
+  text = "",
+}) => {
   if (!recipient || recipient.toString() === actor.toString()) return null;
 
   const notification = await Notification.create({
@@ -208,6 +217,8 @@ export const createNotification = async ({ recipient, actor, type, contentType, 
     type,
     contentType,
     contentId,
+    commentId,
+    replyId,
     text,
   });
 
@@ -264,6 +275,29 @@ export const getFeed = async (req, res) => {
     return res.status(200).json(feed.slice(0, 24));
   } catch (error) {
     return res.status(500).json({ message: `feed error ${error.message}` });
+  }
+};
+
+export const getContentById = async (req, res) => {
+  try {
+    const { type, id } = req.params;
+    const Model = contentModels[type];
+
+    if (!Model) {
+      return res.status(400).json({ message: "Invalid content type" });
+    }
+
+    const item = await populateContent(Model.findById(id));
+    if (!item) {
+      return res.status(404).json({ message: "Content not found" });
+    }
+
+    await persistLegacyMedia(item, "content", req);
+    await Promise.all(getContentUsers([item]).map((user) => persistLegacyProfileImage(user, req)));
+
+    return res.status(200).json(serializeContent(item, type));
+  } catch (error) {
+    return res.status(500).json({ message: `content error ${error.message}` });
   }
 };
 
@@ -577,6 +611,7 @@ export const addComment = async (req, res) => {
       author: req.userId,
       text: cleanText,
     });
+    const newComment = item.comments[item.comments.length - 1];
 
     await item.save();
 
@@ -588,6 +623,7 @@ export const addComment = async (req, res) => {
       type: "comment",
       contentType: type,
       contentId: item._id,
+      commentId: newComment?._id,
       text: cleanText,
     });
 
@@ -629,6 +665,7 @@ export const addCommentReply = async (req, res) => {
       author: req.userId,
       text: cleanText,
     });
+    const newReply = comment.replies[comment.replies.length - 1];
 
     await item.save();
 
@@ -641,6 +678,8 @@ export const addCommentReply = async (req, res) => {
         type: "reply",
         contentType: type,
         contentId: item._id,
+        commentId: comment._id,
+        replyId: newReply?._id,
         text: cleanText,
       });
     }

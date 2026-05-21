@@ -28,6 +28,7 @@ const formatUnreadCount = (count) => (count > 10 ? "10+" : count);
 const shouldAutoDismissStatus = (status) => /\b(uploaded|deleted)\b/i.test(status || "");
 const isInternalAiSetupStatus = (status) => /OPENAI_API_KEY/i.test(status || "");
 const getContentKey = (item) => (item?._id && item?.type ? `${item.type}-${item._id}` : "");
+const getIdString = (value) => (value?._id || value || "").toString();
 const getReplyKey = (item, commentId) => `${getContentKey(item)}-${commentId}-reply`;
 const isTextPost = (item) => item?.type === "post" && item?.mediaType === "text";
 const getContentTypeLabel = (item) => (item?.type === "reel" ? "reel" : "post");
@@ -505,6 +506,7 @@ function Feed() {
   const [profileContentType, setProfileContentType] = useState("all");
   const [profileBusy, setProfileBusy] = useState(false);
   const [selectedProfileItem, setSelectedProfileItem] = useState(null);
+  const [focusedNotificationTarget, setFocusedNotificationTarget] = useState(null);
   const [profileItemMenuOpen, setProfileItemMenuOpen] = useState(false);
   const [connectionsPanel, setConnectionsPanel] = useState({
     open: false,
@@ -651,6 +653,7 @@ function Feed() {
   const mobileStopTypingTimeoutRef = useRef(null);
   const mobileIncomingTypingTimeoutsRef = useRef(new Map());
   const notificationMenuRef = useRef(null);
+  const selectedProfileItemModalRef = useRef(null);
   const mobileFollowingIds = useMemo(
     () => new Set((userData?.following || []).map((id) => id.toString())),
     [userData?.following]
@@ -1119,6 +1122,33 @@ function Feed() {
     document.addEventListener("pointerdown", closeNotificationsOnOutsideClick);
     return () => document.removeEventListener("pointerdown", closeNotificationsOnOutsideClick);
   }, [notificationsOpen]);
+
+  useEffect(() => {
+    if (!selectedProfileItem || !focusedNotificationTarget) return undefined;
+    if (focusedNotificationTarget.contentKey !== getContentKey(selectedProfileItem)) return undefined;
+
+    const targetId = focusedNotificationTarget.replyId || focusedNotificationTarget.commentId;
+    if (!targetId) return undefined;
+
+    const attributeName = focusedNotificationTarget.replyId
+      ? "data-vybe-reply-id"
+      : "data-vybe-comment-id";
+    const selector = `[${attributeName}="${targetId}"]`;
+    const scrollTimer = window.setTimeout(() => {
+      selectedProfileItemModalRef.current?.querySelector(selector)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }, 120);
+    const clearTimer = window.setTimeout(() => {
+      setFocusedNotificationTarget(null);
+    }, 2800);
+
+    return () => {
+      window.clearTimeout(scrollTimer);
+      window.clearTimeout(clearTimer);
+    };
+  }, [focusedNotificationTarget, selectedProfileItem]);
 
   const fetchStories = async () => {
     try {
@@ -2662,6 +2692,7 @@ function Feed() {
     setProfileContentType("all");
     setProfileLoading(true);
     setSelectedProfileItem(null);
+    setFocusedNotificationTarget(null);
     setProfileData((currentProfile) =>
       currentProfile?.user?._id === profileId ? currentProfile : null
     );
@@ -2702,6 +2733,7 @@ function Feed() {
     setSelectedProfileId("");
     setProfileData(null);
     setSelectedProfileItem(null);
+    setFocusedNotificationTarget(null);
     setProfileStatus("");
     setProfileContentType("all");
   }, [openProfile, profileHistory, profileReturnTab]);
@@ -3237,6 +3269,93 @@ function Feed() {
     });
   };
 
+  const resolveNotificationCommentTarget = (notification, item) => {
+    let commentId = getIdString(notification?.commentId);
+    let replyId = getIdString(notification?.replyId);
+    const actorId = getIdString(notification?.actor);
+    const notificationText = notification?.text || "";
+
+    if ((!commentId || (notification?.type === "reply" && !replyId)) && item?.comments?.length) {
+      for (const comment of item.comments) {
+        if (
+          notification?.type === "comment" &&
+          getIdString(comment.author) === actorId &&
+          comment.text === notificationText
+        ) {
+          commentId = getIdString(comment._id);
+          break;
+        }
+
+        const matchingReply = (comment.replies || []).find(
+          (reply) =>
+            getIdString(reply.author) === actorId &&
+            reply.text === notificationText
+        );
+
+        if (notification?.type === "reply" && matchingReply) {
+          commentId = getIdString(comment._id);
+          replyId = getIdString(matchingReply._id);
+          break;
+        }
+      }
+    }
+
+    return { commentId, replyId };
+  };
+
+  const handleNotificationOpen = async (notification) => {
+    setNotificationsOpen(false);
+
+    const contentType = notification?.contentType;
+    const contentId = getIdString(notification?.contentId);
+    if (!["post", "reel"].includes(contentType) || !contentId) {
+      if (notification?.actor) openProfile(notification.actor);
+      return;
+    }
+
+    const contentKey = `${contentType}-${contentId}`;
+    const knownItems = [
+      selectedProfileItem,
+      ...feed,
+      ...(profileData?.content || []),
+    ].filter(Boolean);
+    let targetItem = knownItems.find((item) => getContentKey(item) === contentKey);
+
+    if (!targetItem) {
+      try {
+        const res = await fetch(apiUrl(`/api/content/${contentType}/${contentId}`), {
+          credentials: "include",
+          headers: getTabAuthHeaders(),
+        });
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.message || "Unable to open notification");
+
+        targetItem = data;
+        setFeed((currentFeed) =>
+          currentFeed.some((item) => getContentKey(item) === contentKey)
+            ? currentFeed.map((item) => (getContentKey(item) === contentKey ? data : item))
+            : [data, ...currentFeed]
+        );
+      } catch (error) {
+        setMessage(error.message || "This post is no longer available.");
+        return;
+      }
+    }
+
+    setActiveMobileTab("home");
+    setSelectedMobileChat(null);
+    setCreateOpen(false);
+    setProfileItemMenuOpen(false);
+    setSelectedProfileItem(targetItem);
+    const { commentId, replyId } = resolveNotificationCommentTarget(notification, targetItem);
+    setFocusedNotificationTarget({
+      contentKey,
+      commentId,
+      replyId,
+    });
+  };
+
   const unreadCount = notifications.filter((item) => !item.read).length;
   const baseVisibleFeed = activeMobileTab === "reels"
     ? feed.filter((item) => item.type === "reel")
@@ -3383,9 +3502,21 @@ function Feed() {
     const replyPending = pendingReplyIds.has(replyKey);
     const commentDeleteKey = `${contentKey}-${comment._id}`;
     const commentDeleting = pendingCommentDeleteIds.has(commentDeleteKey);
+    const commentId = getIdString(comment._id);
+    const focusedTargetMatchesContent = focusedNotificationTarget?.contentKey === contentKey;
+    const focusedComment =
+      focusedTargetMatchesContent &&
+      focusedNotificationTarget?.commentId === commentId &&
+      !focusedNotificationTarget?.replyId;
     const replies = comment.replies || [];
     const replyLimit = options.replyLimit || 1;
-    const visibleReplies = replies.slice(-replyLimit);
+    const targetReplyId = focusedTargetMatchesContent ? focusedNotificationTarget?.replyId : "";
+    const visibleReplies = targetReplyId
+      ? replies.filter(
+          (reply, index) =>
+            index >= replies.length - replyLimit || getIdString(reply._id) === targetReplyId
+        )
+      : replies.slice(-replyLimit);
     const hiddenReplyCount = Math.max(0, replies.length - visibleReplies.length);
     const canDeleteComment =
       comment.author?._id === userData?._id || item.author?._id === userData?._id;
@@ -3393,7 +3524,10 @@ function Feed() {
     return (
       <div
         key={comment._id || `${comment.author?._id}-${comment.createdAt}`}
-        className={`group text-sm ${comment.pending || commentDeleting ? "opacity-70" : ""}`}
+        data-vybe-comment-id={commentId || undefined}
+        className={`group rounded-md text-sm transition-colors ${
+          focusedComment ? "bg-blue-600/15 ring-1 ring-blue-500/40 px-2 py-2" : ""
+        } ${comment.pending || commentDeleting ? "opacity-70" : ""}`}
       >
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
@@ -3438,16 +3572,25 @@ function Feed() {
                 {hiddenReplyCount} older {hiddenReplyCount === 1 ? "reply" : "replies"}
               </p>
             ) : null}
-            {visibleReplies.map((reply) => (
-              <p
-                key={reply._id || `${reply.author?._id}-${reply.createdAt}`}
-                className={`text-xs ${reply.pending ? "opacity-70" : ""}`}
-              >
-                <span className="font-semibold text-gray-200 mr-2">{reply.author?.userName || "user"}</span>
-                <span className="text-gray-400 break-words">{reply.text}</span>
-                {reply.pending ? <span className="ml-2 text-gray-600">Sending...</span> : null}
-              </p>
-            ))}
+            {visibleReplies.map((reply) => {
+              const replyId = getIdString(reply._id);
+              const focusedReply =
+                focusedTargetMatchesContent && focusedNotificationTarget?.replyId === replyId;
+
+              return (
+                <p
+                  key={reply._id || `${reply.author?._id}-${reply.createdAt}`}
+                  data-vybe-reply-id={replyId || undefined}
+                  className={`rounded-md text-xs transition-colors ${
+                    focusedReply ? "bg-blue-600/15 ring-1 ring-blue-500/40 px-2 py-1" : ""
+                  } ${reply.pending ? "opacity-70" : ""}`}
+                >
+                  <span className="font-semibold text-gray-200 mr-2">{reply.author?.userName || "user"}</span>
+                  <span className="text-gray-400 break-words">{reply.text}</span>
+                  {reply.pending ? <span className="ml-2 text-gray-600">Sending...</span> : null}
+                </p>
+              );
+            })}
           </div>
         ) : null}
 
@@ -3940,7 +4083,7 @@ function Feed() {
                         <div className="flex items-start gap-3">
                           <button
                             type="button"
-                            onClick={() => notification.actor && openProfile(notification.actor)}
+                            onClick={() => handleNotificationOpen(notification)}
                             className="min-w-0 flex-1 text-left"
                           >
                             <p className="text-sm text-gray-200">
@@ -5408,9 +5551,13 @@ function Feed() {
       {selectedProfileItem ? (
         <div
           className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center px-0 sm:px-4 text-white"
-          onClick={() => setSelectedProfileItem(null)}
+          onClick={() => {
+            setSelectedProfileItem(null);
+            setFocusedNotificationTarget(null);
+          }}
         >
           <div
+            ref={selectedProfileItemModalRef}
             className="relative w-full max-w-[620px] max-h-[94vh] overflow-y-auto bg-[#050505] sm:border border-gray-800 sm:rounded-lg"
             onClick={(event) => event.stopPropagation()}
           >
@@ -5470,7 +5617,10 @@ function Feed() {
                 ) : null}
                 <button
                   type="button"
-                  onClick={() => setSelectedProfileItem(null)}
+                  onClick={() => {
+                    setSelectedProfileItem(null);
+                    setFocusedNotificationTarget(null);
+                  }}
                   className="w-9 h-9 rounded-full bg-[#111] text-gray-300 flex items-center justify-center"
                   aria-label="Close profile media"
                 >
