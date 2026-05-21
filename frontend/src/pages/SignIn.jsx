@@ -10,6 +10,9 @@ import { apiUrl } from "../config/api";
 import { setTabAuthToken } from "../utils/tabAuth";
 import { resetThemeForPublicPages } from "../utils/theme";
 
+const AUTH_BUTTON_CLASS =
+  "w-[90%] h-[56px] bg-black text-white font-semibold rounded-2xl flex justify-center items-center hover:bg-gray-900 transition-all disabled:opacity-50 disabled:cursor-not-allowed";
+
 function SignIn() {
   const navigate = useNavigate(); // only for signup / forgot links
   const dispatch = useDispatch();
@@ -201,7 +204,7 @@ function SignIn() {
 
             <button
               disabled={loading}
-              className="w-[70%] h-[50px] bg-black text-white rounded-2xl flex justify-center items-center"
+              className={AUTH_BUTTON_CLASS}
             >
               {loading ? <ClipLoader color="#fff" size={22} /> : "Sign In"}
             </button>

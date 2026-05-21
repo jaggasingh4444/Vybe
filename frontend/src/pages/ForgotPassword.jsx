@@ -6,6 +6,9 @@ import axios from 'axios'
 import { apiUrl } from '../config/api'
 import { resetThemeForPublicPages } from '../utils/theme'
 
+const AUTH_BUTTON_CLASS =
+  'w-[90%] h-[56px] bg-black text-white font-semibold cursor-pointer rounded-2xl flex items-center justify-center hover:bg-gray-900 transition-all disabled:opacity-50 disabled:cursor-not-allowed'
+
 function ForgotPassword() {
   const navigate = useNavigate()
   const [step, setStep] = useState(1)
@@ -172,9 +175,9 @@ function ForgotPassword() {
               />
             </div>
             
-            <button 
+            <button
               type="submit"
-              className='w-[70%] h-[50px] bg-black text-white font-semibold cursor-pointer rounded-2xl flex items-center justify-center hover:bg-gray-900 transition-all disabled:opacity-50 disabled:cursor-not-allowed'
+              className={AUTH_BUTTON_CLASS}
               disabled={loading}
             >
               {loading ? <ClipLoader size={25} color='white' /> : "Send OTP"}
@@ -225,9 +228,9 @@ function ForgotPassword() {
               />
             </div>
             
-            <button 
+            <button
               type="submit"
-              className='w-[70%] h-[50px] bg-black text-white font-semibold cursor-pointer rounded-2xl flex items-center justify-center hover:bg-gray-900 transition-all disabled:opacity-50 disabled:cursor-not-allowed'
+              className={AUTH_BUTTON_CLASS}
               disabled={loading}
             >
               {loading ? <ClipLoader size={25} color='white' /> : "Verify OTP"}
@@ -342,9 +345,9 @@ function ForgotPassword() {
               )}
             </div>
             
-            <button 
+            <button
               type="submit"
-              className='w-[70%] h-[50px] bg-black text-white font-semibold cursor-pointer rounded-2xl flex items-center justify-center hover:bg-gray-900 transition-all disabled:opacity-50 disabled:cursor-not-allowed'
+              className={AUTH_BUTTON_CLASS}
               disabled={loading}
             >
               {loading ? <ClipLoader size={25} color='white' /> : "Reset Password"}
