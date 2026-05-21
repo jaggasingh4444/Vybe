@@ -14,12 +14,12 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["like", "comment", "follow"],
+      enum: ["like", "comment", "reply", "follow", "story_reply"],
       required: true,
     },
     contentType: {
       type: String,
-      enum: ["post", "reel", "user"],
+      enum: ["post", "reel", "story", "user"],
       required: true,
     },
     contentId: {

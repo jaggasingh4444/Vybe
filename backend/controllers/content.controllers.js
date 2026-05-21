@@ -638,7 +638,7 @@ export const addCommentReply = async (req, res) => {
       await createNotification({
         recipient: comment.author,
         actor: req.userId,
-        type: "comment",
+        type: "reply",
         contentType: type,
         contentId: item._id,
         text: cleanText,

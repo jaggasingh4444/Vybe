@@ -31,6 +31,30 @@ const getContentKey = (item) => (item?._id && item?.type ? `${item.type}-${item.
 const getReplyKey = (item, commentId) => `${getContentKey(item)}-${commentId}-reply`;
 const isTextPost = (item) => item?.type === "post" && item?.mediaType === "text";
 const getContentTypeLabel = (item) => (item?.type === "reel" ? "reel" : "post");
+const getNotificationContentLabel = (notification) => {
+  if (notification?.contentType === "reel") return "reel";
+  if (notification?.contentType === "story") return "story";
+  if (notification?.contentType === "user") return "profile";
+  return "post";
+};
+const getNotificationActionLabel = (notification) => {
+  const contentLabel = getNotificationContentLabel(notification);
+
+  switch (notification?.type) {
+    case "follow":
+      return "followed you";
+    case "like":
+      return `liked your ${contentLabel}`;
+    case "comment":
+      return `commented on your ${contentLabel}`;
+    case "reply":
+      return "replied to your comment";
+    case "story_reply":
+      return "replied to your story";
+    default:
+      return "sent you a notification";
+  }
+};
 const getMediaSizeLimit = (file) =>
   file?.type?.startsWith("video/") ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
 const formatMediaSize = (bytes) => `${Math.round(bytes / ONE_MB)} MB`;
@@ -3902,6 +3926,9 @@ function Feed() {
                   notifications.map((notification) => {
                     const actorId = notification.actor?._id;
                     const isFollowNotification = notification.type === "follow";
+                    const shouldShowNotificationText = ["comment", "reply", "story_reply"].includes(
+                      notification.type
+                    );
                     const alreadyFollowingActor = actorId ? mobileFollowingIds.has(actorId) : false;
 
                     return (
@@ -3918,11 +3945,9 @@ function Feed() {
                           >
                             <p className="text-sm text-gray-200">
                               <span className="font-semibold text-white">{notification.actor?.userName || "Someone"}</span>{" "}
-                              {isFollowNotification
-                                ? "followed you"
-                                : `${notification.type === "like" ? "liked your" : "commented on your"} ${notification.contentType}.`}
+                              {getNotificationActionLabel(notification)}.
                             </p>
-                            {notification.text && !isFollowNotification ? (
+                            {notification.text && shouldShowNotificationText ? (
                               <p className="text-xs text-gray-500 mt-1 truncate">{notification.text}</p>
                             ) : null}
                           </button>
