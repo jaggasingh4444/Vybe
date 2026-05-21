@@ -5,6 +5,11 @@ import { ClipLoader } from "react-spinners";
 import logo from "../assets/logo.png";
 import logo1 from "../assets/logo1.png";
 import { apiUrl } from "../config/api";
+import {
+  EMAIL_VALIDATION_MESSAGE,
+  isValidEmailAddress,
+  normalizeEmailInput,
+} from "../utils/emailValidation";
 import { resetThemeForPublicPages } from "../utils/theme";
 
 const AUTH_BUTTON_CLASS =
@@ -70,6 +75,11 @@ function SignUp() {
       return false;
     }
 
+    if (!isValidEmailAddress(email)) {
+      showToast(EMAIL_VALIDATION_MESSAGE, "error");
+      return false;
+    }
+
     if (password.length < 6) {
       showToast("Password must be at least 6 characters", "error");
       return false;
@@ -81,13 +91,14 @@ function SignUp() {
   const sendSignupCode = async () => {
     if (!validateDetails()) return false;
 
+    const normalizedEmail = normalizeEmailInput(email);
     setOtpLoading(true);
 
     try {
       const res = await fetch(apiUrl("/api/auth/signup/send-otp"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({ email: normalizedEmail }),
       });
       const data = await res.json();
 
@@ -108,6 +119,7 @@ function SignUp() {
 
   const createAccount = async () => {
     setLoading(true);
+    const normalizedEmail = normalizeEmailInput(email);
 
     try {
       const res = await fetch(apiUrl("/api/auth/signup"), {
@@ -117,7 +129,7 @@ function SignUp() {
         body: JSON.stringify({
           name: name.trim(),
           userName: userName.trim(),
-          email: email.trim(),
+          email: normalizedEmail,
           password,
         }),
       });
@@ -153,12 +165,13 @@ function SignUp() {
     }
 
     setVerifyLoading(true);
+    const normalizedEmail = normalizeEmailInput(email);
 
     try {
       const res = await fetch(apiUrl("/api/auth/signup/verify-otp"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), otp: otp.trim() }),
+        body: JSON.stringify({ email: normalizedEmail, otp: otp.trim() }),
       });
       const data = await res.json();
 
@@ -209,7 +222,7 @@ function SignUp() {
               : "Fill your details first, then we will send your email code."}
           </p>
 
-          <form onSubmit={handleSubmit} className="w-full flex flex-col items-center gap-5">
+          <form onSubmit={handleSubmit} noValidate className="w-full flex flex-col items-center gap-5">
             {!otpSent ? (
               <>
                 <Input

@@ -4,6 +4,11 @@ import { ClipLoader } from 'react-spinners'
 import { IoIosEye, IoIosEyeOff } from "react-icons/io"
 import axios from 'axios'
 import { apiUrl } from '../config/api'
+import {
+  EMAIL_VALIDATION_MESSAGE,
+  isValidEmailAddress,
+  normalizeEmailInput,
+} from '../utils/emailValidation'
 import { resetThemeForPublicPages } from '../utils/theme'
 
 const AUTH_BUTTON_CLASS =
@@ -54,11 +59,17 @@ function ForgotPassword() {
       showToast("Please enter your email", "error")
       return
     }
-    
+
+    if (!isValidEmailAddress(email)) {
+      showToast(EMAIL_VALIDATION_MESSAGE, "error")
+      return
+    }
+
     setLoading(true)
-    
+    const normalizedEmail = normalizeEmailInput(email)
+
     try {
-      const res = await axios.post(apiUrl("/api/auth/sendOtp"), { email })
+      const res = await axios.post(apiUrl("/api/auth/sendOtp"), { email: normalizedEmail })
       showToast(res.data.message || "OTP sent successfully!", "success")
       setTimeout(() => setStep(2), 1500)
     } catch (error) {
@@ -76,11 +87,12 @@ function ForgotPassword() {
       showToast("Please enter the OTP", "error")
       return
     }
-    
+
     setLoading(true)
-    
+    const normalizedEmail = normalizeEmailInput(email)
+
     try {
-      const res = await axios.post(apiUrl("/api/auth/verifyOtp"), { email, otp })
+      const res = await axios.post(apiUrl("/api/auth/verifyOtp"), { email: normalizedEmail, otp })
       showToast(res.data.message || "OTP verified successfully!", "success")
       setTimeout(() => setStep(3), 1500)
     } catch (error) {
@@ -103,11 +115,15 @@ function ForgotPassword() {
       showToast("Password must be at least 6 characters", "error")
       return
     }
-    
+
     setLoading(true)
-    
+    const normalizedEmail = normalizeEmailInput(email)
+
     try {
-      const res = await axios.post(apiUrl("/api/auth/resetPassword"), { email, password: newPassword })
+      const res = await axios.post(apiUrl("/api/auth/resetPassword"), {
+        email: normalizedEmail,
+        password: newPassword,
+      })
       showToast(res.data.message || "Password reset successful!", "success")
       setTimeout(() => navigate("/signin"), 2000)
     } catch (error) {
@@ -145,7 +161,7 @@ function ForgotPassword() {
           <h2 className='text-2xl font-bold'>Forgot Password</h2>
           <p className='text-gray-600 text-sm text-center'>Enter your email address and we'll send you an OTP</p>
           
-          <form onSubmit={handleStep1} className='w-full flex flex-col items-center gap-5'>
+          <form onSubmit={handleStep1} noValidate className='w-full flex flex-col items-center gap-5'>
             {/* EMAIL FIELD */}
             <div
               className="relative w-[90%] h-[55px] border-2 border-black rounded-2xl flex items-center px-4 cursor-text transition-all"
