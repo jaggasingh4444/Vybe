@@ -267,12 +267,6 @@ function LeftHome() {
             <p className="text-[17px] text-gray-400 truncate">{userData?.name}</p>
           </button>
 
-          <button
-            onClick={handleLogout}
-            className="text-blue-500 font-semibold hover:text-blue-400 flex items-center gap-2"
-          >
-            <FiLogOut /> Logout
-          </button>
         </div>
 
         <div className="grid grid-cols-3 gap-2 mt-7 border-y border-gray-900 py-4">
@@ -409,6 +403,24 @@ function LeftHome() {
               </div>
 
               <AdminVerificationPanel userData={userData} />
+
+              <div className="border-t border-gray-900 pt-4">
+                <div className="flex items-center justify-between gap-4 rounded-md bg-[#080808] p-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold">Account</p>
+                    <p className="text-xs text-gray-500">Sign out from this browser.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="h-10 shrink-0 rounded-md bg-[#171717] px-4 text-sm font-semibold text-red-300 hover:bg-red-500/10 hover:text-red-200"
+                  >
+                    <span className="flex items-center gap-2">
+                      <FiLogOut /> Logout
+                    </span>
+                  </button>
+                </div>
+              </div>
 
               <div className="border-t border-gray-900 pt-4 flex flex-col gap-3">
                 <div className="flex items-center justify-between gap-3">
