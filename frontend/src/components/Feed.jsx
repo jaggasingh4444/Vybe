@@ -5093,7 +5093,7 @@ function Feed() {
                     />
                   </button>
                   <div className="min-w-0 flex-1">
-                    <div className="flex min-w-0 items-center gap-2">
+                    <div className="flex min-w-0 items-center gap-3">
                       <button
                         type="button"
                         onClick={() => openProfile(item.author)}
@@ -5106,13 +5106,13 @@ function Feed() {
                           type="button"
                           onClick={() => handleFeedUserFollow(item.author)}
                           disabled={feedUserBusyId === authorId}
-                          className="shrink-0 rounded-md bg-white px-3 py-1 text-xs font-semibold text-black transition hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="shrink-0 text-sm font-semibold text-blue-500 transition hover:text-blue-400 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {feedUserBusyId === authorId
                             ? "..."
                             : authorFollowsMe
-                              ? "Follow Back"
-                              : "Follow"}
+                              ? "Follow back+"
+                              : "Follow+"}
                         </button>
                       ) : null}
                     </div>
