@@ -8,6 +8,8 @@ import { logout, setUserData } from "../redux/userSlice";
 import { getTabAuthHeaders, markTabLoggedOut, withTabAuth } from "../utils/tabAuth";
 import { downloadMediaFile } from "../utils/mediaDownload";
 import { useThemePreference } from "../utils/theme";
+import AdminVerificationPanel from "./AdminVerificationPanel";
+import VerifiedBadge from "./VerifiedBadge";
 
 const ONE_MB = 1024 * 1024;
 const MAX_IMAGE_SIZE = 10 * ONE_MB;
@@ -3532,7 +3534,10 @@ function Feed() {
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p>
-              <span className="text-white font-semibold mr-2">{comment.author?.userName || "user"}</span>
+              <span className="mr-2 inline-flex max-w-full items-center gap-1 align-bottom text-white font-semibold">
+                <span className="truncate">{comment.author?.userName || "user"}</span>
+                {comment.author?.isVerified ? <VerifiedBadge /> : null}
+              </span>
               <span className="text-gray-300 break-words">{comment.text}</span>
               {comment.pending ? (
                 <span className="ml-2 text-xs text-gray-500">Posting...</span>
@@ -3585,7 +3590,10 @@ function Feed() {
                     focusedReply ? "bg-blue-600/15 ring-1 ring-blue-500/40 px-2 py-1" : ""
                   } ${reply.pending ? "opacity-70" : ""}`}
                 >
-                  <span className="font-semibold text-gray-200 mr-2">{reply.author?.userName || "user"}</span>
+                  <span className="mr-2 inline-flex max-w-full items-center gap-1 align-bottom font-semibold text-gray-200">
+                    <span className="truncate">{reply.author?.userName || "user"}</span>
+                    {reply.author?.isVerified ? <VerifiedBadge className="h-3.5 w-3.5" /> : null}
+                  </span>
                   <span className="text-gray-400 break-words">{reply.text}</span>
                   {reply.pending ? <span className="ml-2 text-gray-600">Sending...</span> : null}
                 </p>
@@ -4169,7 +4177,10 @@ function Feed() {
                         </span>
 
                         <span className="min-w-0 flex-1">
-                          <span className="block text-white text-sm font-semibold truncate">@{feedUser.userName}</span>
+                          <span className="flex min-w-0 items-center gap-1.5 text-white text-sm font-semibold">
+                            <span className="truncate">@{feedUser.userName}</span>
+                            {feedUser.isVerified ? <VerifiedBadge /> : null}
+                          </span>
                           <span className="block text-gray-500 text-xs truncate">
                             {[feedUser.name, isUserOnline(feedUser) ? "Online" : followsMe ? "Follows you" : ""]
                               .filter(Boolean)
@@ -4365,8 +4376,9 @@ function Feed() {
                         <span className="absolute bottom-1 right-1 w-3 h-3 rounded-full bg-green-500 border-2 border-black" />
                       ) : null}
                     </span>
-                    <span className="mt-2 w-full text-white text-sm font-semibold truncate">
-                      {suggestedUser.userName}
+                    <span className="mt-2 flex w-full min-w-0 items-center justify-center gap-1 text-white text-sm font-semibold">
+                      <span className="truncate">{suggestedUser.userName}</span>
+                      {suggestedUser.isVerified ? <VerifiedBadge /> : null}
                     </span>
                     <span className="w-full text-gray-500 text-xs truncate">
                       {isUserOnline(suggestedUser)
@@ -4440,8 +4452,9 @@ function Feed() {
                   </span>
 
                   <div className="min-w-0 flex-1">
-                    <p className="text-white text-2xl font-bold truncate">
-                      {activeProfileUser.userName}
+                    <p className="flex min-w-0 items-center gap-1.5 text-white text-2xl font-bold">
+                      <span className="truncate">{activeProfileUser.userName}</span>
+                      {activeProfileUser.isVerified ? <VerifiedBadge className="h-5 w-5" /> : null}
                     </p>
                     <p className="text-gray-500 text-sm truncate">
                       {[activeProfileUser.name, isUserOnline(activeProfileUser) ? "Online" : ""]
@@ -4660,7 +4673,10 @@ function Feed() {
                       ) : null}
                     </span>
                     <div className="min-w-0">
-                      <p className="text-white text-[15px] font-semibold truncate">{selectedMobileChat.userName}</p>
+                      <p className="flex min-w-0 items-center gap-1 text-white text-[15px] font-semibold">
+                        <span className="truncate">{selectedMobileChat.userName}</span>
+                        {selectedMobileChat.isVerified ? <VerifiedBadge /> : null}
+                      </p>
                       <p className="text-[#aebac1] text-xs truncate">
                         {isUserOnline(selectedMobileChat) ? "Online" : "Offline"}
                       </p>
@@ -4997,7 +5013,10 @@ function Feed() {
                             className="min-w-0 flex-1 text-left"
                           >
                             <div className="min-w-0">
-                              <p className="text-white font-semibold truncate">{chatUser.userName}</p>
+                              <p className="flex min-w-0 items-center gap-1.5 text-white font-semibold">
+                                <span className="truncate">{chatUser.userName}</span>
+                                {chatUser.isVerified ? <VerifiedBadge /> : null}
+                              </p>
                               <p className="text-gray-500 text-sm truncate">
                                 {getChatPreviewText(
                                   chatUser,
@@ -5097,9 +5116,10 @@ function Feed() {
                       <button
                         type="button"
                         onClick={() => openProfile(item.author)}
-                        className="min-w-0 truncate text-left font-semibold text-white hover:text-gray-300"
+                        className="flex min-w-0 items-center gap-1.5 text-left font-semibold text-white hover:text-gray-300"
                       >
-                        {item.author?.userName || "vybe_user"}
+                        <span className="truncate">{item.author?.userName || "vybe_user"}</span>
+                        {item.author?.isVerified ? <VerifiedBadge /> : null}
                       </button>
                       {showAuthorFollow ? (
                         <button
@@ -5288,7 +5308,10 @@ function Feed() {
                   }}
                 />
                 <div className="min-w-0">
-                  <p className="font-semibold truncate">{userData?.userName || "vybe_user"}</p>
+                  <p className="flex min-w-0 items-center gap-1.5 font-semibold">
+                    <span className="truncate">{userData?.userName || "vybe_user"}</span>
+                    {userData?.isVerified ? <VerifiedBadge /> : null}
+                  </p>
                   <p className="text-xs text-gray-500">Create {mode === "reel" ? "reel" : "post"}</p>
                 </div>
               </div>
@@ -5576,8 +5599,9 @@ function Feed() {
                   }}
                 />
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold truncate">
-                    {selectedProfileItem.author?.userName || "vybe_user"}
+                  <p className="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
+                    <span className="truncate">{selectedProfileItem.author?.userName || "vybe_user"}</span>
+                    {selectedProfileItem.author?.isVerified ? <VerifiedBadge /> : null}
                   </p>
                   <p className="text-xs text-gray-500">
                     {selectedProfileItem.type === "reel" ? "Reel" : "Post"}
@@ -5749,8 +5773,9 @@ function Feed() {
                   }}
                 />
                 <div className="min-w-0">
-                  <p className="text-white text-[15px] font-semibold truncate">
-                    {selectedStory.author?.userName || "Story"}
+                  <p className="flex min-w-0 items-center gap-1 text-white text-[15px] font-semibold">
+                    <span className="truncate">{selectedStory.author?.userName || "Story"}</span>
+                    {selectedStory.author?.isVerified ? <VerifiedBadge /> : null}
                     <span className="ml-2 text-gray-400 font-normal">
                       {getStoryAgeLabel(selectedStory, storyClock)}
                     </span>
@@ -6105,6 +6130,8 @@ function Feed() {
                   </button>
                 </div>
               </div>
+
+              <AdminVerificationPanel userData={userData} />
 
               <div className="border-t border-gray-900 pt-4 flex flex-col gap-3">
                 <button

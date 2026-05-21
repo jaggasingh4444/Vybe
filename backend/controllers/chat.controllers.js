@@ -7,9 +7,9 @@ import { isDataUrl, isStoredMediaUrl, saveBinaryMedia, saveDataUrlMedia } from "
 
 const chatClients = new Map();
 
-const safeUserSelect = "name userName profileImage followers following";
-const messageUserSelect = "name userName profileImage";
-const reactionUserSelect = "name userName profileImage";
+const safeUserSelect = "name userName profileImage followers following isVerified verificationStatus";
+const messageUserSelect = "name userName profileImage isVerified";
+const reactionUserSelect = "name userName profileImage isVerified";
 const sharedContentModels = {
   post: Post,
   reel: Loop,
@@ -131,7 +131,7 @@ const buildSharedContentSnapshot = async (sharedContent, req) => {
     throw error;
   }
 
-  const item = await Model.findById(contentId).populate("author", "name userName profileImage");
+  const item = await Model.findById(contentId).populate("author", "name userName profileImage isVerified");
   if (!item) {
     const error = new Error("Shared content not found");
     error.status = 404;
@@ -150,6 +150,7 @@ const buildSharedContentSnapshot = async (sharedContent, req) => {
       name: item.author?.name || "",
       userName: item.author?.userName || "",
       profileImage: item.author?.profileImage || "",
+      isVerified: Boolean(item.author?.isVerified),
     },
     createdAt: item.createdAt,
   };

@@ -3,6 +3,7 @@ import genToken from "../config/token.js"
 import User from "../models/user.model.js"
 import EmailVerification from "../models/emailVerification.model.js"
 import bcrypt from "bcryptjs"
+import { toSafeUser } from "../utils/admin.js"
 
 const OTP_EXPIRY_MS = 5 * 60 * 1000;
 const VERIFIED_SIGNUP_EXPIRY_MS = 10 * 60 * 1000;
@@ -110,8 +111,7 @@ export const signUp=async (req, res)=>{
             sameSite:"lax",
             path:"/"
         })
-        const safeUser = user.toObject()
-        delete safeUser.password
+        const safeUser = toSafeUser(user)
         safeUser.authToken = token
 
         return res.status(201).json(safeUser)
@@ -236,8 +236,7 @@ export const signIn = async (req, res) => {
     });
 
     // ❌ never send password
-    const safeUser = user.toObject();
-    delete safeUser.password;
+    const safeUser = toSafeUser(user);
     safeUser.authToken = token;
 
     return res.status(200).json(safeUser);
@@ -419,7 +418,7 @@ export const getMe = async (req, res) => {
       return res.status(401).json({ message: "Not authenticated" });
     }
 
-    return res.status(200).json(user);
+    return res.status(200).json(toSafeUser(user));
   } catch (error) {
     return res.status(500).json({ message: "GetMe error" });
   }

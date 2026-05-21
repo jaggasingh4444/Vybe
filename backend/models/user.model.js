@@ -65,8 +65,28 @@ const userSchema= new mongoose.Schema({
     isOtpVerified:{
         type:Boolean,
         default:false  // Changed from true to false
+    },
+    isVerified:{
+        type:Boolean,
+        default:false
+    },
+    verificationStatus:{
+        type:String,
+        enum:["pending","approved","rejected"],
+        default:"pending"
+    },
+    role:{
+        type:String,
+        enum:["user","admin"],
+        default:"user"
+    },
+    verifiedAt:{
+        type:Date
+    },
+    verifiedBy:{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:"User"
     }
-    
 },{timestamps:true})
 
 const User = mongoose.model("User",userSchema)

@@ -46,9 +46,9 @@ const contentModels = {
 
 const populateContent = (query) =>
   query
-    .populate("author", "name userName profileImage")
-    .populate("comments.author", "name userName profileImage")
-    .populate("comments.replies.author", "name userName profileImage");
+    .populate("author", "name userName profileImage isVerified")
+    .populate("comments.author", "name userName profileImage isVerified")
+    .populate("comments.replies.author", "name userName profileImage isVerified");
 
 const persistLegacyMedia = async (item, folder, req) => {
   if (!isDataUrl(item.media)) return item;
@@ -222,7 +222,7 @@ export const createNotification = async ({
     text,
   });
 
-  const populatedNotification = await notification.populate("actor", "name userName profileImage");
+  const populatedNotification = await notification.populate("actor", "name userName profileImage isVerified");
   sendNotificationEvent(recipient, {
     type: "notification:new",
     notification: populatedNotification,
@@ -310,7 +310,7 @@ export const getStories = async (req, res) => {
       createdAt: { $gt: getActiveStoryCutoff() },
       author: { $in: visibleAuthorIds },
     })
-      .populate("author", "name userName profileImage")
+      .populate("author", "name userName profileImage isVerified")
       .sort({ createdAt: -1 })
       .limit(30);
 
@@ -347,7 +347,7 @@ export const createStory = async (req, res) => {
 
     await User.findByIdAndUpdate(req.userId, { $set: { story: story._id } });
 
-    const populatedStory = await story.populate("author", "name userName profileImage");
+    const populatedStory = await story.populate("author", "name userName profileImage isVerified");
     broadcastContentUpdate("story:update", { storyId: story._id });
 
     return res.status(201).json(serializeStory(populatedStory));
@@ -369,7 +369,7 @@ export const viewStory = async (req, res) => {
       },
       { $addToSet: { viewers: req.userId } },
       { new: true }
-    ).populate("author", "name userName profileImage");
+    ).populate("author", "name userName profileImage isVerified");
 
     if (!story) {
       return res.status(404).json({ message: "Story expired or not found" });
@@ -444,7 +444,7 @@ export const createPost = async (req, res) => {
 
     await User.findByIdAndUpdate(req.userId, { $push: { posts: post._id } });
 
-    const populatedPost = await post.populate("author", "name userName profileImage");
+    const populatedPost = await post.populate("author", "name userName profileImage isVerified");
     broadcastContentUpdate();
 
     return res.status(201).json(serializeContent(populatedPost, "post"));
@@ -471,7 +471,7 @@ export const createReel = async (req, res) => {
 
     await User.findByIdAndUpdate(req.userId, { $push: { loop: reel._id } });
 
-    const populatedReel = await reel.populate("author", "name userName profileImage");
+    const populatedReel = await reel.populate("author", "name userName profileImage isVerified");
     broadcastContentUpdate();
 
     return res.status(201).json(serializeContent(populatedReel, "reel"));
@@ -733,7 +733,7 @@ export const deleteComment = async (req, res) => {
 export const getNotifications = async (req, res) => {
   try {
     const notifications = await Notification.find({ recipient: req.userId })
-      .populate("actor", "name userName profileImage")
+      .populate("actor", "name userName profileImage isVerified")
       .sort({ createdAt: -1 })
       .limit(30);
 

@@ -6,6 +6,7 @@ import { setSuggestedUsers, setUserData } from "../redux/userSlice";
 import { FiCheck, FiChevronLeft, FiChevronRight, FiDownload, FiImage, FiMessageCircle, FiMoreVertical, FiSearch, FiSend, FiSmile, FiVideo, FiX } from "react-icons/fi";
 import { getTabAuthHeaders, withTabAuth } from "../utils/tabAuth";
 import { downloadMediaFile } from "../utils/mediaDownload";
+import VerifiedBadge from "./VerifiedBadge";
 
 const ONE_MB = 1024 * 1024;
 const MAX_IMAGE_SIZE = 10 * ONE_MB;
@@ -1333,7 +1334,10 @@ function RightHome() {
                     onClick={() => openChat(user)}
                     className="min-w-0 text-left"
                   >
-                    <p className="text-white text-sm font-semibold truncate">{user.userName}</p>
+                    <p className="flex min-w-0 items-center gap-1.5 text-white text-sm font-semibold">
+                      <span className="truncate">{user.userName}</span>
+                      {user.isVerified ? <VerifiedBadge /> : null}
+                    </p>
                     <p className="text-gray-500 text-xs truncate">
                       {isUserOnline(user) ? "Online" : user.name}
                     </p>
@@ -1423,7 +1427,10 @@ function RightHome() {
                     className="min-w-0 flex-1 text-left"
                   >
                     <div className="min-w-0">
-                      <p className="text-white text-sm font-semibold truncate">{user.userName}</p>
+                      <p className="flex min-w-0 items-center gap-1.5 text-white text-sm font-semibold">
+                        <span className="truncate">{user.userName}</span>
+                        {user.isVerified ? <VerifiedBadge /> : null}
+                      </p>
                       <p className="text-gray-500 text-xs truncate">
                         {getChatPreviewText(
                           user,
@@ -1484,7 +1491,10 @@ function RightHome() {
                 ) : null}
               </span>
               <div className="min-w-0">
-                <p className="text-white text-sm font-semibold truncate">{selectedChat.userName}</p>
+                <p className="flex min-w-0 items-center gap-1.5 text-white text-sm font-semibold">
+                  <span className="truncate">{selectedChat.userName}</span>
+                  {selectedChat.isVerified ? <VerifiedBadge /> : null}
+                </p>
                 <p className="text-gray-500 text-xs truncate">
                   {isUserOnline(selectedChat) ? "Online" : "Offline"}
                 </p>

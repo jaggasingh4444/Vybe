@@ -5,6 +5,7 @@ import User from "../models/user.model.js"
 import genToken from "../config/token.js";
 import { isDataUrl, saveDataUrlMedia } from "../utils/mediaStorage.js";
 import { createNotification } from "./content.controllers.js";
+import { toSafeUser } from "../utils/admin.js";
 
 const safeUserSelect = "-password -resetOtp -otpExpires -isOtpVerified";
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -22,9 +23,9 @@ const serializeProfileContent = (item, type) => ({
 
 const populateProfileContent = (query) =>
     query
-        .populate("author", "name userName profileImage")
-        .populate("comments.author", "name userName profileImage")
-        .populate("comments.replies.author", "name userName profileImage");
+        .populate("author", "name userName profileImage isVerified")
+        .populate("comments.author", "name userName profileImage isVerified")
+        .populate("comments.replies.author", "name userName profileImage isVerified");
 
 const persistLegacyProfileMedia = async (item, req) => {
     if (!isDataUrl(item.media)) return item;
@@ -51,7 +52,7 @@ export const getCurrentUser = async (req, res)=>{
             return res.status(404).json({message:"User not found"})
         }
         await persistLegacyProfileImage(user, req);
-        const safeUser = user.toObject()
+        const safeUser = toSafeUser(user)
         safeUser.authToken = await genToken(user._id)
 
         return res.status(200).json(safeUser)
@@ -66,7 +67,7 @@ export const suggestedUsers = async (req, res) => {
             _id: { $ne: req.userId }
         }).select(safeUserSelect).limit(12);
         await Promise.all(users.map((user) => persistLegacyProfileImage(user, req)));
-        return res.status(200).json(users);
+        return res.status(200).json(users.map(toSafeUser));
     } catch (error) {
         return res.status(500).json({ message: `suggested user error ${error.message}` });
     }
@@ -99,7 +100,7 @@ export const searchUsers = async (req, res) => {
             .limit(20);
 
         await Promise.all(users.map((user) => persistLegacyProfileImage(user, req)));
-        return res.status(200).json(users);
+        return res.status(200).json(users.map(toSafeUser));
     } catch (error) {
         return res.status(500).json({ message: `search user error ${error.message}` });
     }
@@ -135,7 +136,7 @@ export const getUserProfile = async (req, res) => {
         ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
         return res.status(200).json({
-            user,
+            user: toSafeUser(user),
             content,
         });
     } catch (error) {
@@ -154,7 +155,7 @@ export const getUserConnections = async (req, res) => {
 
         const user = await User.findById(userId)
             .select(type)
-            .populate(type, "name userName profileImage followers following");
+            .populate(type, "name userName profileImage followers following isVerified verificationStatus");
 
         if (!user) {
             return res.status(404).json({ message: "User not found" });
@@ -163,7 +164,7 @@ export const getUserConnections = async (req, res) => {
         const users = user[type] || [];
         await Promise.all(users.map((connectionUser) => persistLegacyProfileImage(connectionUser, req)));
 
-        return res.status(200).json({ type, users });
+        return res.status(200).json({ type, users: users.map(toSafeUser) });
     } catch (error) {
         return res.status(500).json({ message: `connections error ${error.message}` });
     }
@@ -216,7 +217,7 @@ export const updateProfile = async (req, res) => {
             { new: true }
         ).select(safeUserSelect);
 
-        return res.status(200).json(user);
+        return res.status(200).json(toSafeUser(user));
     } catch (error) {
         return res.status(500).json({ message: `update profile error ${error.message}` });
     }
@@ -272,8 +273,8 @@ export const toggleFollow = async (req, res) => {
 
         return res.status(200).json({
             following: !isFollowing,
-            currentUser: updatedCurrentUser,
-            targetUser: updatedTargetUser,
+            currentUser: toSafeUser(updatedCurrentUser),
+            targetUser: toSafeUser(updatedTargetUser),
         });
     } catch (error) {
         return res.status(500).json({ message: `follow error ${error.message}` });
@@ -314,8 +315,8 @@ export const removeFollower = async (req, res) => {
 
         return res.status(200).json({
             removed: true,
-            currentUser: updatedCurrentUser,
-            targetUser: updatedTargetUser,
+            currentUser: toSafeUser(updatedCurrentUser),
+            targetUser: toSafeUser(updatedTargetUser),
         });
     } catch (error) {
         return res.status(500).json({ message: `remove follower error ${error.message}` });

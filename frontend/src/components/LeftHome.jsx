@@ -22,6 +22,8 @@ import {
   FiX,
 } from "react-icons/fi";
 import { useThemePreference } from "../utils/theme";
+import AdminVerificationPanel from "./AdminVerificationPanel";
+import VerifiedBadge from "./VerifiedBadge";
 
 const MAX_AVATAR_SIZE = 3 * 1024 * 1024;
 
@@ -256,7 +258,10 @@ function LeftHome() {
             onClick={openOwnProfile}
             className="min-w-0 flex-1 text-left"
           >
-            <p className="text-[22px] text-white font-bold truncate">{userData?.userName}</p>
+            <p className="flex min-w-0 items-center gap-1.5 text-[22px] text-white font-bold">
+              <span className="truncate">{userData?.userName}</span>
+              {userData?.isVerified ? <VerifiedBadge className="h-5 w-5" /> : null}
+            </p>
             <p className="text-[17px] text-gray-400 truncate">{userData?.name}</p>
           </button>
 
@@ -400,6 +405,8 @@ function LeftHome() {
                   onChange={(checked) => setTheme(checked ? "light" : "dark")}
                 />
               </div>
+
+              <AdminVerificationPanel userData={userData} />
 
               <div className="border-t border-gray-900 pt-4 flex flex-col gap-3">
                 <div className="flex items-center justify-between gap-3">
