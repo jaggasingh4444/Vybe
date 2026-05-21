@@ -627,6 +627,7 @@ function Feed() {
         ...otherUser,
         _id: otherUserId,
         profileImage: otherUser.profileImage || existing?.profileImage || "",
+        isVerified: Boolean(otherUser.isVerified || existing?.isVerified),
         unreadCount,
         isOnline: existing?.isOnline || onlineUserIdsRef.current.has(otherUserId),
         latestMessage: createChatListMessagePreview(message, currentUserId),
@@ -3710,8 +3711,9 @@ function Feed() {
             </div>
             <div className="min-w-0 flex-1 py-1">
               <p className="text-xs font-semibold text-white">Shared {sharedTypeLabel}</p>
-              <p className="mt-1 truncate text-xs text-white/70">
-                @{sharedItem.author?.userName || "vybe_user"}
+              <p className="mt-1 flex min-w-0 items-center gap-1 text-xs text-white/70">
+                <span className="truncate">@{sharedItem.author?.userName || "vybe_user"}</span>
+                {sharedItem.author?.isVerified ? <VerifiedBadge className="h-3.5 w-3.5" /> : null}
               </p>
               {sharedItem.caption ? (
                 <p className="mt-1 truncate text-xs text-white/60">{sharedItem.caption}</p>
@@ -5234,7 +5236,10 @@ function Feed() {
                 <p className="text-white text-sm font-semibold mt-4">{item.likes?.length || 0} likes</p>
                 {item.caption && !isTextPost(item) ? (
                   <p className="text-sm mt-1">
-                    <span className="text-white font-semibold mr-2">{item.author?.userName || "vybe_user"}</span>
+                    <span className="mr-2 inline-flex max-w-full items-center gap-1 align-bottom text-white font-semibold">
+                      <span className="truncate">{item.author?.userName || "vybe_user"}</span>
+                      {item.author?.isVerified ? <VerifiedBadge /> : null}
+                    </span>
                     <span className="text-gray-300">{item.caption}</span>
                   </p>
                 ) : null}
@@ -5541,7 +5546,10 @@ function Feed() {
                         }}
                       />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold truncate">{shareUser.userName}</p>
+                        <p className="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
+                          <span className="truncate">{shareUser.userName}</span>
+                          {shareUser.isVerified ? <VerifiedBadge /> : null}
+                        </p>
                         <p className="text-xs text-gray-500 truncate">{shareUser.name || "Vybe user"}</p>
                       </div>
                       <button
@@ -5694,8 +5702,9 @@ function Feed() {
 
               {selectedProfileItem.caption && !isTextPost(selectedProfileItem) ? (
                 <p className="mt-3 text-sm">
-                  <span className="font-semibold text-white mr-2">
-                    {selectedProfileItem.author?.userName || "vybe_user"}
+                  <span className="mr-2 inline-flex max-w-full items-center gap-1 align-bottom font-semibold text-white">
+                    <span className="truncate">{selectedProfileItem.author?.userName || "vybe_user"}</span>
+                    {selectedProfileItem.author?.isVerified ? <VerifiedBadge /> : null}
                   </span>
                   <span className="text-gray-300">{selectedProfileItem.caption}</span>
                 </p>
@@ -6009,8 +6018,9 @@ function Feed() {
                           }}
                         />
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold text-white">
-                            {connectionUser.userName}
+                          <p className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-white">
+                            <span className="truncate">{connectionUser.userName}</span>
+                            {connectionUser.isVerified ? <VerifiedBadge /> : null}
                           </p>
                           <p className="truncate text-xs text-gray-500">
                             {connectionUser.name || "Open profile"}
@@ -6268,8 +6278,9 @@ function Feed() {
                 }}
               />
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-white">
-                  {activeMobileChatListUser.userName}
+                <p className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-white">
+                  <span className="truncate">{activeMobileChatListUser.userName}</span>
+                  {activeMobileChatListUser.isVerified ? <VerifiedBadge /> : null}
                 </p>
                 <p className="truncate text-xs text-gray-500">
                   {getChatPreviewText(activeMobileChatListUser, "Conversation options")}

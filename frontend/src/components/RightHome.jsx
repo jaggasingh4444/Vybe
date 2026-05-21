@@ -335,6 +335,7 @@ function RightHome() {
         ...otherUser,
         _id: otherUserId,
         profileImage: otherUser.profileImage || existing?.profileImage || "",
+        isVerified: Boolean(otherUser.isVerified || existing?.isVerified),
         unreadCount,
         isOnline: existing?.isOnline || onlineUserIdsRef.current.has(otherUserId),
         latestMessage: createChatListMessagePreview(message, currentUserId),
@@ -1151,8 +1152,9 @@ function RightHome() {
             </div>
             <div className="min-w-0 flex-1 py-1">
               <p className="text-xs font-semibold text-white">Shared {sharedTypeLabel}</p>
-              <p className="mt-1 truncate text-xs text-white/70">
-                @{sharedItem.author?.userName || "vybe_user"}
+              <p className="mt-1 flex min-w-0 items-center gap-1 text-xs text-white/70">
+                <span className="truncate">@{sharedItem.author?.userName || "vybe_user"}</span>
+                {sharedItem.author?.isVerified ? <VerifiedBadge className="h-3.5 w-3.5" /> : null}
               </p>
               {sharedItem.caption ? (
                 <p className="mt-1 truncate text-xs text-white/60">{sharedItem.caption}</p>

@@ -188,6 +188,7 @@ const buildReplySnapshot = async (messageId, userId) => {
       _id: message.sender?._id?.toString() || message.sender?.toString() || "",
       name: message.sender?.name || "",
       userName: message.sender?.userName || "",
+      isVerified: Boolean(message.sender?.isVerified),
     },
     text: message.text || "",
     mediaType: message.mediaType || message.attachments?.[0]?.mediaType || "",
