@@ -74,6 +74,11 @@ const messageSchema = new mongoose.Schema(
       sharedContentType: String,
       createdAt: Date,
     },
+    connectionStatus: {
+      type: String,
+      enum: ["connected", "pending"],
+      default: "connected",
+    },
     read: {
       type: Boolean,
       default: false,
@@ -118,6 +123,7 @@ const messageSchema = new mongoose.Schema(
 messageSchema.index({ sender: 1, receiver: 1, createdAt: -1 });
 messageSchema.index({ receiver: 1, read: 1, createdAt: -1 });
 messageSchema.index({ receiver: 1, delivered: 1, createdAt: -1 });
+messageSchema.index({ receiver: 1, connectionStatus: 1, createdAt: -1 });
 messageSchema.index({ updatedAt: -1 });
 
 const Message = mongoose.model("Message", messageSchema);

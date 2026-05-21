@@ -79,6 +79,7 @@ const createChatListMessagePreview = (message, currentUserId) => {
     text: message.text || "",
     mediaType: message.mediaType || getMessageAttachments(message)[0]?.mediaType || "",
     sharedContentType: message.sharedContent?.contentType || "",
+    connectionStatus: message.connectionStatus || "connected",
     isMine: isSameId(senderId, currentUserId),
     createdAt: message.createdAt,
   };
@@ -88,11 +89,19 @@ const getChatPreviewText = (user, fallbackText) => {
   if (!latestMessage) return fallbackText;
 
   const prefix = latestMessage.isMine ? "You: " : "";
-  if (latestMessage.text) return `${prefix}${latestMessage.text}`;
-  if (latestMessage.mediaType === "video") return `${prefix}Video`;
-  if (latestMessage.mediaType === "image") return `${prefix}Photo`;
-  if (latestMessage.sharedContentType) return `${prefix}Shared ${latestMessage.sharedContentType}`;
-  return `${prefix}Message`;
+  const pendingPrefix =
+    latestMessage.connectionStatus === "pending"
+      ? latestMessage.isMine
+        ? "Pending · "
+        : "Request · "
+      : "";
+  if (latestMessage.text) return `${pendingPrefix}${prefix}${latestMessage.text}`;
+  if (latestMessage.mediaType === "video") return `${pendingPrefix}${prefix}Video`;
+  if (latestMessage.mediaType === "image") return `${pendingPrefix}${prefix}Photo`;
+  if (latestMessage.sharedContentType) {
+    return `${pendingPrefix}${prefix}Shared ${latestMessage.sharedContentType}`;
+  }
+  return `${pendingPrefix}${prefix}Message`;
 };
 const MessageStatusTicks = ({ message }) => {
   if (!message || message.failed) return null;
@@ -101,6 +110,14 @@ const MessageStatusTicks = ({ message }) => {
     return (
       <span className="mt-1 flex justify-end text-[10px] font-medium text-white/70">
         Sending...
+      </span>
+    );
+  }
+
+  if (message.connectionStatus === "pending") {
+    return (
+      <span className="mt-1 flex justify-end text-[10px] font-semibold text-amber-200">
+        Pending
       </span>
     );
   }
@@ -336,6 +353,10 @@ function RightHome() {
         _id: otherUserId,
         profileImage: otherUser.profileImage || existing?.profileImage || "",
         isVerified: Boolean(otherUser.isVerified || existing?.isVerified),
+        pendingConnection:
+          message.connectionStatus === "pending"
+            ? true
+            : existing?.pendingConnection && message.connectionStatus !== "connected",
         unreadCount,
         isOnline: existing?.isOnline || onlineUserIdsRef.current.has(otherUserId),
         latestMessage: createChatListMessagePreview(message, currentUserId),
@@ -987,6 +1008,7 @@ function RightHome() {
       mediaType: mediaPayload[0]?.mediaType,
       attachments: mediaPayload.map(({ media, mediaType }) => ({ media, mediaType })),
       replyTo: replyTarget ? createMessageReplySnapshot(replyTarget) : undefined,
+      connectionStatus: receiver.pendingConnection ? "pending" : "connected",
       pending: true,
       createdAt: new Date().toISOString(),
     };
@@ -1029,6 +1051,13 @@ function RightHome() {
 
       saveConfirmedMessage(data, tempId);
       syncChatUserFromMessage(data);
+      if (data.connectionStatus === "pending") {
+        setSelectedChat((current) =>
+          current && isSameId(current._id, receiver._id)
+            ? { ...current, pendingConnection: true }
+            : current
+        );
+      }
       setChatEmojiOpen(false);
       setStatus("");
     } catch (error) {
@@ -1436,7 +1465,13 @@ function RightHome() {
                       <p className="text-gray-500 text-xs truncate">
                         {getChatPreviewText(
                           user,
-                          isUserOnline(user) ? "Online" : showFollowBack ? "Follows you" : "Open chat"
+                          user.pendingConnection
+                            ? "Pending connection"
+                            : isUserOnline(user)
+                              ? "Online"
+                              : showFollowBack
+                                ? "Follows you"
+                                : "Open chat"
                         )}
                       </p>
                     </div>
@@ -1498,7 +1533,11 @@ function RightHome() {
                   {selectedChat.isVerified ? <VerifiedBadge /> : null}
                 </p>
                 <p className="text-gray-500 text-xs truncate">
-                  {isUserOnline(selectedChat) ? "Online" : "Offline"}
+                  {selectedChat.pendingConnection
+                    ? "Pending connection"
+                    : isUserOnline(selectedChat)
+                      ? "Online"
+                      : "Offline"}
                 </p>
               </div>
             </button>

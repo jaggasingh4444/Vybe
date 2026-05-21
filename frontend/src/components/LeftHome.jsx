@@ -26,6 +26,8 @@ import AdminVerificationPanel from "./AdminVerificationPanel";
 import VerifiedBadge from "./VerifiedBadge";
 
 const MAX_AVATAR_SIZE = 3 * 1024 * 1024;
+const getIdString = (value) => (value?._id || value || "").toString();
+const uniqueCount = (items = []) => new Set(items.map(getIdString).filter(Boolean)).size;
 
 const readFileAsDataUrl = (file) =>
   new Promise((resolve, reject) => {
@@ -176,8 +178,8 @@ function LeftHome() {
   };
 
   const postCount = userData?.posts?.length || 0;
-  const followerCount = userData?.followers?.length || 0;
-  const followingCount = userData?.following?.length || 0;
+  const followerCount = uniqueCount(userData?.followers);
+  const followingCount = uniqueCount(userData?.following);
 
   const openOwnProfile = () => {
     window.dispatchEvent(

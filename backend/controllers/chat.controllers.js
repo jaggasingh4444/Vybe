@@ -80,6 +80,7 @@ const serializeChatListMessage = (message, currentUserId) => {
     text: message.text || "",
     mediaType: message.mediaType || message.attachments?.[0]?.mediaType || "",
     sharedContentType: message.sharedContent?.contentType || "",
+    connectionStatus: message.connectionStatus || "connected",
     isMine: senderId === currentUserId,
     createdAt: message.createdAt,
   };
@@ -378,7 +379,7 @@ export const chatEvents = (req, res) => {
 
 export const getChatUsers = async (req, res) => {
   try {
-    const currentUser = await User.findById(req.userId).select("_id");
+    const currentUser = await User.findById(req.userId).select("followers following");
     if (!currentUser) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -387,7 +388,7 @@ export const getChatUsers = async (req, res) => {
       ...visibleToUserFilter(req.userId),
       $or: [{ sender: req.userId }, { receiver: req.userId }],
     })
-      .select("sender receiver text mediaType attachments sharedContent createdAt updatedAt")
+      .select("sender receiver text mediaType attachments sharedContent connectionStatus createdAt updatedAt")
       .sort({ updatedAt: -1 })
       .limit(100);
 
@@ -424,12 +425,27 @@ export const getChatUsers = async (req, res) => {
     const orderedUsers = uniqueIds
       .map((id) => userMap.get(id))
       .filter(Boolean)
-      .map((user) => ({
-        ...user.toObject(),
-        unreadCount: unreadCountMap.get(user._id.toString()) || 0,
-        isOnline: chatClients.has(user._id.toString()),
-        latestMessage: latestMessageMap.get(user._id.toString()) || null,
-      }));
+      .map((user) => {
+        const userId = user._id.toString();
+        const connected = areMutualConnections(currentUser, userId);
+        const latestMessage = latestMessageMap.get(userId) || null;
+
+        return {
+          ...user.toObject(),
+          unreadCount: unreadCountMap.get(userId) || 0,
+          isOnline: chatClients.has(userId),
+          isConnected: connected,
+          pendingConnection: !connected,
+          latestMessage: latestMessage
+            ? {
+                ...latestMessage,
+                connectionStatus: connected
+                  ? "connected"
+                  : "pending",
+              }
+            : null,
+        };
+      });
 
     return res.status(200).json(orderedUsers);
   } catch (error) {
@@ -500,6 +516,12 @@ export const searchConnectedChatUsers = async (req, res) => {
 export const getMessages = async (req, res) => {
   try {
     const otherUserId = req.params.userId;
+    const currentUser = await User.findById(req.userId).select("followers following");
+    if (!currentUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const connected = areMutualConnections(currentUser, otherUserId);
     const sinceDate = typeof req.query.since === "string" ? new Date(req.query.since) : null;
     const hasSince = sinceDate && Number.isFinite(sinceDate.getTime());
     const sinceFilter = hasSince ? { createdAt: { $gt: sinceDate } } : {};
@@ -524,7 +546,12 @@ export const getMessages = async (req, res) => {
 
     await Promise.all(getReactionUsers(orderedMessages).map((user) => persistLegacyProfileImage(user, req)));
 
-    return res.status(200).json(orderedMessages);
+    return res.status(200).json(
+      orderedMessages.map((message) => ({
+        ...(message.toObject ? message.toObject() : message),
+        connectionStatus: connected ? "connected" : "pending",
+      }))
+    );
   } catch (error) {
     return res.status(500).json({ message: `messages error ${error.message}` });
   }
@@ -549,6 +576,12 @@ export const markMessagesRead = async (req, res) => {
 export const sendMessage = async (req, res) => {
   try {
     const receiverId = req.params.userId;
+    const currentUser = await User.findById(req.userId).select("followers following");
+    if (!currentUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const connected = areMutualConnections(currentUser, receiverId);
     const sharedContent = await buildSharedContentSnapshot(req.body.sharedContent, req);
     const replyTo = await buildReplySnapshot(
       req.body.replyToMessageId || req.body.replyTo?.messageId || req.body.replyTo,
@@ -569,12 +602,7 @@ export const sendMessage = async (req, res) => {
     }
 
     if (sharedContent) {
-      const currentUser = await User.findById(req.userId).select("followers following");
-      if (!currentUser) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      if (!areMutualConnections(currentUser, receiverId)) {
+      if (!connected) {
         return res.status(403).json({ message: "You can share only with connected users" });
       }
     }
@@ -605,6 +633,7 @@ export const sendMessage = async (req, res) => {
       attachments: storedAttachments,
       sharedContent,
       replyTo,
+      connectionStatus: connected ? "connected" : "pending",
       delivered: receiverOnline,
       deliveredAt,
     });

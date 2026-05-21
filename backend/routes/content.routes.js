@@ -15,6 +15,7 @@ import {
   getContentById,
   getNotifications,
   getStories,
+  deleteNotification,
   markNotificationsRead,
   notificationEvents,
   toggleLike,
@@ -44,6 +45,7 @@ contentRouter.get("/stories", isAuth, getStories);
 contentRouter.get("/notifications", isAuth, getNotifications);
 contentRouter.get("/notifications/events", isAuth, notificationEvents);
 contentRouter.patch("/notifications/read", isAuth, markNotificationsRead);
+contentRouter.delete("/notifications/:notificationId", isAuth, deleteNotification);
 contentRouter.post(
   "/uploads",
   isAuth,

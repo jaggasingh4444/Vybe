@@ -9,6 +9,15 @@ import { toSafeUser } from "../utils/admin.js";
 
 const safeUserSelect = "-password -resetOtp -otpExpires -isOtpVerified";
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const uniqueUsersById = (users = []) => {
+    const seen = new Set();
+    return users.filter((user) => {
+        const id = (user?._id || user || "").toString();
+        if (!id || seen.has(id)) return false;
+        seen.add(id);
+        return true;
+    });
+};
 const serializeProfileContent = (item, type) => ({
     _id: item._id,
     type,
@@ -161,7 +170,7 @@ export const getUserConnections = async (req, res) => {
             return res.status(404).json({ message: "User not found" });
         }
 
-        const users = user[type] || [];
+        const users = uniqueUsersById(user[type] || []);
         await Promise.all(users.map((connectionUser) => persistLegacyProfileImage(connectionUser, req)));
 
         return res.status(200).json({ type, users: users.map(toSafeUser) });

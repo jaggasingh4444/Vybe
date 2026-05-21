@@ -766,6 +766,26 @@ export const markNotificationsRead = async (req, res) => {
   }
 };
 
+export const deleteNotification = async (req, res) => {
+  try {
+    const result = await Notification.deleteOne({
+      _id: req.params.notificationId,
+      recipient: req.userId,
+    });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ message: "Notification not found" });
+    }
+
+    return res.status(200).json({
+      id: req.params.notificationId,
+      message: "Notification deleted",
+    });
+  } catch (error) {
+    return res.status(500).json({ message: `notification delete error ${error.message}` });
+  }
+};
+
 const storyExpiryTimer = setInterval(() => {
   cleanupExpiredStoriesAndBroadcast().catch(() => {});
 }, 60 * 1000);

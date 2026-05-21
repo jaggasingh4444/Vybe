@@ -22,6 +22,24 @@ export const toSafeUser = (user) => {
   delete safeUser.otpExpires;
   delete safeUser.isOtpVerified;
 
+  const dedupeIdArray = (items = []) => {
+    const seen = new Set();
+    return items.filter((item) => {
+      const id = (item?._id || item || "").toString();
+      if (!id || seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+  };
+
+  if (Array.isArray(safeUser.followers)) {
+    safeUser.followers = dedupeIdArray(safeUser.followers);
+  }
+
+  if (Array.isArray(safeUser.following)) {
+    safeUser.following = dedupeIdArray(safeUser.following);
+  }
+
   if (isAdminUser(safeUser)) {
     safeUser.role = "admin";
     safeUser.isVerified = true;

@@ -31,6 +31,7 @@ const shouldAutoDismissStatus = (status) => /\b(uploaded|deleted)\b/i.test(statu
 const isInternalAiSetupStatus = (status) => /OPENAI_API_KEY/i.test(status || "");
 const getContentKey = (item) => (item?._id && item?.type ? `${item.type}-${item._id}` : "");
 const getIdString = (value) => (value?._id || value || "").toString();
+const uniqueCount = (items = []) => new Set(items.map(getIdString).filter(Boolean)).size;
 const getReplyKey = (item, commentId) => `${getContentKey(item)}-${commentId}-reply`;
 const isTextPost = (item) => item?.type === "post" && item?.mediaType === "text";
 const getContentTypeLabel = (item) => (item?.type === "reel" ? "reel" : "post");
@@ -112,6 +113,7 @@ const createChatListMessagePreview = (message, currentUserId) => {
     text: message.text || "",
     mediaType: message.mediaType || getMessageAttachments(message)[0]?.mediaType || "",
     sharedContentType: message.sharedContent?.contentType || "",
+    connectionStatus: message.connectionStatus || "connected",
     isMine: isSameId(senderId, currentUserId),
     createdAt: message.createdAt,
   };
@@ -121,11 +123,19 @@ const getChatPreviewText = (user, fallbackText) => {
   if (!latestMessage) return fallbackText;
 
   const prefix = latestMessage.isMine ? "You: " : "";
-  if (latestMessage.text) return `${prefix}${latestMessage.text}`;
-  if (latestMessage.mediaType === "video") return `${prefix}Video`;
-  if (latestMessage.mediaType === "image") return `${prefix}Photo`;
-  if (latestMessage.sharedContentType) return `${prefix}Shared ${latestMessage.sharedContentType}`;
-  return `${prefix}Message`;
+  const pendingPrefix =
+    latestMessage.connectionStatus === "pending"
+      ? latestMessage.isMine
+        ? "Pending · "
+        : "Request · "
+      : "";
+  if (latestMessage.text) return `${pendingPrefix}${prefix}${latestMessage.text}`;
+  if (latestMessage.mediaType === "video") return `${pendingPrefix}${prefix}Video`;
+  if (latestMessage.mediaType === "image") return `${pendingPrefix}${prefix}Photo`;
+  if (latestMessage.sharedContentType) {
+    return `${pendingPrefix}${prefix}Shared ${latestMessage.sharedContentType}`;
+  }
+  return `${pendingPrefix}${prefix}Message`;
 };
 const getReplyPreviewText = (reply) => {
   if (!reply) return "";
@@ -220,6 +230,14 @@ const MessageStatusTicks = ({ message }) => {
     return (
       <span className="mt-1 flex justify-end text-[10px] font-medium text-white/70">
         Sending...
+      </span>
+    );
+  }
+
+  if (message.connectionStatus === "pending") {
+    return (
+      <span className="mt-1 flex justify-end text-[10px] font-semibold text-amber-200">
+        Pending
       </span>
     );
   }
@@ -545,6 +563,7 @@ function Feed() {
   const [pendingCommentDeleteIds, setPendingCommentDeleteIds] = useState(() => new Set());
   const [notifications, setNotifications] = useState([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [deletingNotificationIds, setDeletingNotificationIds] = useState(() => new Set());
   const [mobileChatUsers, setMobileChatUsers] = useState([]);
   const [mobileChatSearch, setMobileChatSearch] = useState("");
   const [mobileChatSearchResults, setMobileChatSearchResults] = useState([]);
@@ -594,6 +613,7 @@ function Feed() {
   const [onlineUserIds, setOnlineUserIds] = useState(() => new Set());
   const [feedVideosMuted, setFeedVideosMuted] = useState(true);
   const feedRootRef = useRef(null);
+  const refreshHomeFeedRef = useRef(null);
   const feedVideosMutedRef = useRef(true);
   const onlineUserIdsRef = useRef(new Set());
   const pendingLikeIdsRef = useRef(new Set());
@@ -628,6 +648,10 @@ function Feed() {
         _id: otherUserId,
         profileImage: otherUser.profileImage || existing?.profileImage || "",
         isVerified: Boolean(otherUser.isVerified || existing?.isVerified),
+        pendingConnection:
+          message.connectionStatus === "pending"
+            ? true
+            : existing?.pendingConnection && message.connectionStatus !== "connected",
         unreadCount,
         isOnline: existing?.isOnline || onlineUserIdsRef.current.has(otherUserId),
         latestMessage: createChatListMessagePreview(message, currentUserId),
@@ -1180,6 +1204,29 @@ function Feed() {
     }
   };
 
+  const scrollFeedToTop = () => {
+    requestAnimationFrame(() => {
+      feedRootRef.current?.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+    });
+  };
+
+  const refreshHomeFeed = () => {
+    setActiveMobileTab("home");
+    setCreateOpen(false);
+    setSelectedStory(null);
+    setSelectedProfileItem(null);
+    setMessage("");
+    setLoadingFeed(true);
+    fetchFeed();
+    fetchStories();
+    fetchNotifications();
+    scrollFeedToTop();
+  };
+  refreshHomeFeedRef.current = refreshHomeFeed;
+
   const fetchMobileChatUsers = async (options = {}) => {
     try {
       const res = await fetch(apiUrl("/api/chat/users"), {
@@ -1586,16 +1633,7 @@ function Feed() {
       const action = event.detail?.action;
 
       if (action === "home") {
-        setActiveMobileTab("home");
-        setCreateOpen(false);
-        setSelectedStory(null);
-        setMessage("");
-        requestAnimationFrame(() => {
-          document.querySelector("[data-vybe-feed-root]")?.scrollTo({
-            top: 0,
-            behavior: "smooth",
-          });
-        });
+        refreshHomeFeedRef.current?.();
       }
 
       if (action === "create") {
@@ -3020,6 +3058,7 @@ function Feed() {
       mediaType: mediaPayload[0]?.mediaType,
       attachments: mediaPayload.map(({ media, mediaType }) => ({ media, mediaType })),
       replyTo: replyTarget ? createMessageReplySnapshot(replyTarget) : undefined,
+      connectionStatus: receiver.pendingConnection ? "pending" : "connected",
       pending: true,
       createdAt: new Date().toISOString(),
     };
@@ -3064,6 +3103,13 @@ function Feed() {
 
       saveConfirmedMobileMessage(data, tempId);
       syncMobileChatUserFromMessage(data);
+      if (data.connectionStatus === "pending") {
+        setSelectedMobileChat((current) =>
+          current && isSameId(current._id, receiver._id)
+            ? { ...current, pendingConnection: true }
+            : current
+        );
+      }
       setMobileChatEmojiOpen(false);
       setMobileChatStatus("");
       focusMobileMessageInput();
@@ -3270,6 +3316,37 @@ function Feed() {
       method: "PATCH",
       credentials: "include",
     });
+  };
+
+  const deleteNotification = async (notificationId) => {
+    if (!notificationId || deletingNotificationIds.has(notificationId)) return;
+
+    setDeletingNotificationIds((current) => {
+      const next = new Set(current);
+      next.add(notificationId);
+      return next;
+    });
+
+    try {
+      const res = await fetch(apiUrl(`/api/content/notifications/${notificationId}`), {
+        method: "DELETE",
+        credentials: "include",
+        headers: getTabAuthHeaders(),
+      });
+
+      if (!res.ok) throw new Error("Delete failed");
+      setNotifications((current) =>
+        current.filter((notification) => notification._id !== notificationId)
+      );
+    } catch {
+      setMessage("Unable to delete notification.");
+    } finally {
+      setDeletingNotificationIds((current) => {
+        const next = new Set(current);
+        next.delete(notificationId);
+        return next;
+      });
+    }
   };
 
   const resolveNotificationCommentTarget = (notification, item) => {
@@ -4120,6 +4197,19 @@ function Feed() {
                                   : "Follow Back"}
                             </button>
                           ) : null}
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              deleteNotification(notification._id);
+                            }}
+                            disabled={deletingNotificationIds.has(notification._id)}
+                            className="shrink-0 rounded-full p-2 text-gray-500 hover:bg-[#111] hover:text-red-400 disabled:opacity-50"
+                            aria-label="Delete notification"
+                            title="Delete notification"
+                          >
+                            <FiTrash2 />
+                          </button>
                         </div>
                       </div>
                     );
@@ -4438,54 +4528,56 @@ function Feed() {
               <div className="py-16 text-center text-gray-500">Loading profile...</div>
             ) : activeProfileUser ? (
               <>
-                <div className="flex items-center gap-5">
-                  <span className="relative shrink-0">
-                    <img
-                      src={mediaUrl(activeProfileUser.profileImage) || dp}
-                      alt={activeProfileUser.userName || "Profile"}
-                      className="w-24 h-24 rounded-full object-cover border border-gray-800"
-                      onError={(event) => {
-                        event.currentTarget.src = dp;
-                      }}
-                    />
-                    {isUserOnline(activeProfileUser) ? (
-                      <span className="absolute bottom-2 right-1 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-black" />
-                    ) : null}
-                  </span>
+                <div className="rounded-2xl border border-gray-900 bg-[#050505] p-4 sm:p-5">
+                  <div className="flex items-center gap-4 sm:gap-5">
+                    <span className="relative shrink-0">
+                      <img
+                        src={mediaUrl(activeProfileUser.profileImage) || dp}
+                        alt={activeProfileUser.userName || "Profile"}
+                        className="h-20 w-20 rounded-full border border-gray-800 object-cover sm:h-24 sm:w-24"
+                        onError={(event) => {
+                          event.currentTarget.src = dp;
+                        }}
+                      />
+                      {isUserOnline(activeProfileUser) ? (
+                        <span className="absolute bottom-1 right-1 h-4 w-4 rounded-full border-2 border-black bg-green-500" />
+                      ) : null}
+                    </span>
 
-                  <div className="min-w-0 flex-1">
-                    <p className="flex min-w-0 items-center gap-1.5 text-white text-2xl font-bold">
-                      <span className="truncate">{activeProfileUser.userName}</span>
-                      {activeProfileUser.isVerified ? <VerifiedBadge className="h-5 w-5" /> : null}
-                    </p>
-                    <p className="text-gray-500 text-sm truncate">
-                      {[activeProfileUser.name, isUserOnline(activeProfileUser) ? "Online" : ""]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </p>
-
-                    <div className="grid grid-cols-3 gap-2 mt-4">
-                      <div>
-                        <p className="text-white font-bold">{activeProfileContent.length}</p>
-                        <p className="text-gray-500 text-xs">Posts</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => openConnectionsList({ user: activeProfileUser, type: "followers" })}
-                        className="text-left"
-                      >
-                        <p className="text-white font-bold">{activeProfileUser.followers?.length || 0}</p>
-                        <p className="text-gray-500 text-xs">Followers</p>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openConnectionsList({ user: activeProfileUser, type: "following" })}
-                        className="text-left"
-                      >
-                        <p className="text-white font-bold">{activeProfileUser.following?.length || 0}</p>
-                        <p className="text-gray-500 text-xs">Following</p>
-                      </button>
+                    <div className="min-w-0 flex-1">
+                      <p className="flex min-w-0 items-center gap-1.5 text-2xl font-bold text-white">
+                        <span className="truncate">{activeProfileUser.userName}</span>
+                        {activeProfileUser.isVerified ? <VerifiedBadge className="h-5 w-5" /> : null}
+                      </p>
+                      <p className="mt-1 truncate text-sm text-gray-500">
+                        {[activeProfileUser.name, isUserOnline(activeProfileUser) ? "Online" : ""]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
                     </div>
+                  </div>
+
+                  <div className="mt-5 grid grid-cols-3 overflow-hidden rounded-xl border border-gray-900 bg-black">
+                    <div className="px-2 py-3 text-center">
+                      <p className="font-bold text-white">{activeProfileContent.length}</p>
+                      <p className="text-xs text-gray-500">Posts</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => openConnectionsList({ user: activeProfileUser, type: "followers" })}
+                      className="border-l border-gray-900 px-2 py-3 text-center hover:bg-[#101010]"
+                    >
+                      <p className="font-bold text-white">{uniqueCount(activeProfileUser.followers)}</p>
+                      <p className="text-xs text-gray-500">Followers</p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openConnectionsList({ user: activeProfileUser, type: "following" })}
+                      className="border-l border-gray-900 px-2 py-3 text-center hover:bg-[#101010]"
+                    >
+                      <p className="font-bold text-white">{uniqueCount(activeProfileUser.following)}</p>
+                      <p className="text-xs text-gray-500">Following</p>
+                    </button>
                   </div>
                 </div>
 
@@ -4531,15 +4623,19 @@ function Feed() {
                       <button
                         type="button"
                         onClick={() => {
+                          const chatTarget = {
+                            ...activeProfileUser,
+                            pendingConnection: !(profileIsFollowing && profileFollowsMe),
+                          };
                           if (isMobile) {
                             setActiveMobileTab("chat");
-                            openMobileChat(activeProfileUser);
+                            openMobileChat(chatTarget);
                             return;
                           }
 
                           window.dispatchEvent(
                             new CustomEvent("vybe:open-chat", {
-                              detail: { user: activeProfileUser },
+                              detail: { user: chatTarget },
                             })
                           );
                         }}
@@ -4680,7 +4776,11 @@ function Feed() {
                         {selectedMobileChat.isVerified ? <VerifiedBadge /> : null}
                       </p>
                       <p className="text-[#aebac1] text-xs truncate">
-                        {isUserOnline(selectedMobileChat) ? "Online" : "Offline"}
+                        {selectedMobileChat.pendingConnection
+                          ? "Pending connection"
+                          : isUserOnline(selectedMobileChat)
+                            ? "Online"
+                            : "Offline"}
                       </p>
                     </div>
                   </button>
@@ -5022,7 +5122,13 @@ function Feed() {
                               <p className="text-gray-500 text-sm truncate">
                                 {getChatPreviewText(
                                   chatUser,
-                                  isUserOnline(chatUser) ? "Online" : showFollowBack ? "Follows you" : "Open chat"
+                                  chatUser.pendingConnection
+                                    ? "Pending connection"
+                                    : isUserOnline(chatUser)
+                                      ? "Online"
+                                      : showFollowBack
+                                        ? "Follows you"
+                                        : "Open chat"
                                 )}
                               </p>
                             </div>
@@ -6283,7 +6389,12 @@ function Feed() {
                   {activeMobileChatListUser.isVerified ? <VerifiedBadge /> : null}
                 </p>
                 <p className="truncate text-xs text-gray-500">
-                  {getChatPreviewText(activeMobileChatListUser, "Conversation options")}
+                  {getChatPreviewText(
+                    activeMobileChatListUser,
+                    activeMobileChatListUser.pendingConnection
+                      ? "Pending connection"
+                      : "Conversation options"
+                  )}
                 </p>
               </div>
             </div>
@@ -6498,7 +6609,7 @@ function Feed() {
       >
         <button
           type="button"
-          onClick={() => setActiveMobileTab("home")}
+          onClick={refreshHomeFeed}
           className={`h-full flex flex-col items-center justify-center gap-1 ${
             activeMobileTab === "home" ? "text-white" : "text-gray-500"
           }`}
