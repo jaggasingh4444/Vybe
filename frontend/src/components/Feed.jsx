@@ -33,7 +33,8 @@ const getContentKey = (item) => (item?._id && item?.type ? `${item.type}-${item.
 const getIdString = (value) => (value?._id || value || "").toString();
 const uniqueCount = (items = []) => new Set(items.map(getIdString).filter(Boolean)).size;
 const getReplyKey = (item, commentId) => `${getContentKey(item)}-${commentId}-reply`;
-const isTextPost = (item) => item?.type === "post" && item?.mediaType === "text";
+const isTextPost = (item) =>
+  item?.type === "post" && (item?.mediaType === "text" || !item?.media);
 const getContentTypeLabel = (item) => (item?.type === "reel" ? "reel" : "post");
 const getNotificationContentLabel = (notification) => {
   if (notification?.contentType === "reel") return "reel";
