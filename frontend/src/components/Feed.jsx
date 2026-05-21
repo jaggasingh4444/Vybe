@@ -3891,7 +3891,10 @@ function Feed() {
             </button>
 
             {notificationsOpen ? (
-              <div className="absolute right-0 mt-3 w-[320px] max-h-[420px] overflow-y-auto rounded-lg border border-gray-800 bg-[#050505] shadow-2xl">
+              <div
+                data-vybe-notification-panel
+                className="absolute right-0 mt-3 w-[320px] max-h-[420px] overflow-y-auto rounded-lg border border-gray-800 bg-[#050505] shadow-2xl"
+              >
                 <div className="px-4 py-3 border-b border-gray-900">
                   <p className="text-white font-semibold">Notifications</p>
                 </div>
@@ -3902,7 +3905,11 @@ function Feed() {
                     const alreadyFollowingActor = actorId ? mobileFollowingIds.has(actorId) : false;
 
                     return (
-                      <div key={notification._id} className="px-4 py-3 border-b border-gray-900 last:border-b-0">
+                      <div
+                        key={notification._id}
+                        data-vybe-notification-item
+                        className="px-4 py-3 border-b border-gray-900 last:border-b-0"
+                      >
                         <div className="flex items-start gap-3">
                           <button
                             type="button"
@@ -5523,6 +5530,7 @@ function Feed() {
 
       {selectedStory ? (
         <div
+          data-vybe-story-viewer
           className="fixed inset-0 z-50 bg-[#0f1216] flex justify-center text-white"
           onClick={closeStoryViewer}
         >

@@ -21,7 +21,6 @@ import {
   FiUser,
   FiX,
 } from "react-icons/fi";
-import { FaRegHeart } from "react-icons/fa6";
 import { useThemePreference } from "../utils/theme";
 
 const MAX_AVATAR_SIZE = 3 * 1024 * 1024;
@@ -219,15 +218,14 @@ function LeftHome() {
     <aside className="hidden lg:flex lg:w-[300px] xl:w-[340px] shrink-0 min-h-[100vh] bg-black border-r border-gray-900 flex-col">
       <div className="w-full h-[96px] flex items-center justify-between px-6">
         <img src={logo} alt="logo" className="w-[92px]" />
-        <div className="flex items-center gap-4 text-white text-2xl">
-          <FaRegHeart />
+        <div className="flex items-center text-white text-2xl">
           <button
             type="button"
             onClick={() => {
               setSettingsOpen(true);
               setStatus("");
             }}
-            className="w-9 h-9 flex items-center justify-center hover:text-blue-400"
+            className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-[#101010] hover:text-blue-400"
             aria-label="Open settings"
           >
             <FiSettings />

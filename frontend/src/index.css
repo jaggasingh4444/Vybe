@@ -169,6 +169,48 @@ body.vybe-theme-active.vybe-light [class~="shadow-black/20"] {
   --tw-shadow-color: rgba(15, 23, 42, 0.08) !important;
 }
 
+body.vybe-theme-active.vybe-light [class~="hover:bg-[#101010]"]:hover,
+body.vybe-theme-active.vybe-light [class~="hover:bg-[#111]"]:hover,
+body.vybe-theme-active.vybe-light [class~="hover:bg-[#141414]"]:hover,
+body.vybe-theme-active.vybe-light [class~="hover:bg-[#151515]"]:hover,
+body.vybe-theme-active.vybe-light [class~="hover:bg-[#171717]"]:hover,
+body.vybe-theme-active.vybe-light [class~="hover:bg-[#181818]"]:hover,
+body.vybe-theme-active.vybe-light [class~="active:bg-[#202020]"]:active,
+body.vybe-theme-active.vybe-light [class~="hover:bg-white/5"]:hover,
+body.vybe-theme-active.vybe-light [class~="hover:bg-white/10"]:hover,
+body.vybe-theme-active.vybe-light [class~="active:bg-white/5"]:active,
+body.vybe-theme-active.vybe-light [class~="active:bg-white/10"]:active {
+  background-color: rgba(15, 23, 42, 0.06) !important;
+}
+
+body.vybe-theme-active.vybe-light [class~="hover:text-white"]:hover {
+  color: var(--vybe-light-text) !important;
+}
+
+body.vybe-theme-active.vybe-light [class~="hover:text-blue-400"]:hover,
+body.vybe-theme-active.vybe-light [class~="hover:text-blue-300"]:hover {
+  color: #2563eb !important;
+}
+
+body.vybe-theme-active.vybe-light [class~="hover:text-red-400"]:hover,
+body.vybe-theme-active.vybe-light [class~="hover:text-red-300"]:hover {
+  color: #dc2626 !important;
+}
+
+body.vybe-theme-active.vybe-light [data-vybe-notification-panel] {
+  background: var(--vybe-light-surface) !important;
+  border-color: var(--vybe-light-border) !important;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.14) !important;
+}
+
+body.vybe-theme-active.vybe-light [data-vybe-notification-item] {
+  transition: background-color 0.15s ease;
+}
+
+body.vybe-theme-active.vybe-light [data-vybe-notification-item]:hover {
+  background: #f8fafc !important;
+}
+
 body.vybe-theme-active.vybe-light .text-white,
 body.vybe-theme-active.vybe-light .text-gray-100,
 body.vybe-theme-active.vybe-light .text-gray-200,
@@ -268,6 +310,62 @@ body.vybe-theme-active.vybe-light [class~="bg-black/95"][class~="text-white"] {
 body.vybe-theme-active.vybe-light [class~="bg-black/90"][class~="text-white"] .text-white,
 body.vybe-theme-active.vybe-light [class~="bg-black/95"][class~="text-white"] .text-white {
   color: #ffffff !important;
+}
+
+body.vybe-theme-active.vybe-light [data-vybe-story-viewer] {
+  background: #0f1216 !important;
+  color: #ffffff !important;
+}
+
+body.vybe-theme-active.vybe-light [data-vybe-story-viewer] [class~="bg-[#111418]"] {
+  background-color: #111418 !important;
+}
+
+body.vybe-theme-active.vybe-light [data-vybe-story-viewer] .text-white,
+body.vybe-theme-active.vybe-light [data-vybe-story-viewer] [class~="text-white"],
+body.vybe-theme-active.vybe-light [data-vybe-story-viewer] [class~="hover:text-white"]:hover {
+  color: #ffffff !important;
+}
+
+body.vybe-theme-active.vybe-light [data-vybe-story-viewer] .text-gray-200,
+body.vybe-theme-active.vybe-light [data-vybe-story-viewer] .text-gray-300,
+body.vybe-theme-active.vybe-light [data-vybe-story-viewer] .text-gray-400 {
+  color: #cbd5e1 !important;
+}
+
+body.vybe-theme-active.vybe-light [data-vybe-story-viewer] .text-gray-500 {
+  color: #94a3b8 !important;
+}
+
+body.vybe-theme-active.vybe-light [data-vybe-story-viewer] [class~="bg-white"] {
+  background-color: #ffffff !important;
+}
+
+body.vybe-theme-active.vybe-light [data-vybe-story-viewer] [class~="bg-white/30"] {
+  background-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+body.vybe-theme-active.vybe-light [data-vybe-story-viewer] [class~="bg-white/10"],
+body.vybe-theme-active.vybe-light [data-vybe-story-viewer] [class~="hover:bg-white/10"]:hover {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+body.vybe-theme-active.vybe-light [data-vybe-story-viewer] [class~="bg-black"],
+body.vybe-theme-active.vybe-light [data-vybe-story-viewer] [class~="bg-black/30"] {
+  background-color: rgba(0, 0, 0, 0.3) !important;
+}
+
+body.vybe-theme-active.vybe-light [data-vybe-story-viewer] [class~="bg-[#171717]"] {
+  background-color: #171717 !important;
+}
+
+body.vybe-theme-active.vybe-light [data-vybe-story-viewer] input {
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.42) !important;
+}
+
+body.vybe-theme-active.vybe-light [data-vybe-story-viewer] input::placeholder {
+  color: rgba(255, 255, 255, 0.72) !important;
 }
 
 body.vybe-theme-active.vybe-light video,
