@@ -76,6 +76,12 @@ contentRouter.post(
   express.raw({ type: ["image/*", "video/*", "application/octet-stream"], limit: "80mb" }),
   uploadContentMedia
 );
+contentRouter.get("/posts", isAuth, (_req, res) =>
+  res.status(405).json({ message: "Use POST /api/content/posts to create a post" })
+);
+contentRouter.get("/reels", isAuth, (_req, res) =>
+  res.status(405).json({ message: "Use POST /api/content/reels to create a reel" })
+);
 contentRouter.post("/posts", isAuth, upload.single("media"), createPost);
 contentRouter.post("/reels", isAuth, upload.single("media"), createReel);
 contentRouter.post("/upload-media", isAuth, upload.single("media"), uploadMediaToS3);
