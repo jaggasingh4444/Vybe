@@ -221,7 +221,7 @@ function LeftHome() {
   ];
 
   return (
-    <aside className="hidden lg:flex lg:w-[300px] xl:w-[340px] shrink-0 min-h-[100vh] bg-black border-r border-gray-900 flex-col">
+    <aside className="vybe-sidebar hidden lg:flex lg:w-[300px] xl:w-[340px] shrink-0 min-h-[100vh] bg-black border-r border-gray-900 flex-col">
       <div className="w-full h-[96px] flex items-center justify-between px-6">
         <img src={logo} alt="logo" className="w-[92px]" />
         <div className="flex items-center text-white text-2xl">

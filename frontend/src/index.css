@@ -418,3 +418,372 @@ input:not(:placeholder-shown) ~ label {
   top: -12px !important;
   font-size: 13px !important;
 }
+
+/* Vybe visual refresh */
+:root {
+  --vybe-brand: #6557ff;
+  --vybe-brand-2: #8b5cf6;
+  --vybe-brand-3: #06b6d4;
+  --vybe-ink: #0f172a;
+  --vybe-muted: #667085;
+  --vybe-card: rgba(255, 255, 255, 0.82);
+  --vybe-card-strong: rgba(255, 255, 255, 0.96);
+  --vybe-line: rgba(99, 102, 241, 0.16);
+  --vybe-shadow: 0 24px 70px rgba(15, 23, 42, 0.12);
+  --vybe-shadow-soft: 0 16px 45px rgba(15, 23, 42, 0.1);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  letter-spacing: 0;
+}
+
+@keyframes vybe-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes vybe-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes vybe-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -8px, 0);
+  }
+}
+
+.vybe-auth-page {
+  min-height: 100svh;
+  overflow: auto;
+  padding: clamp(1rem, 3vw, 2rem);
+  background:
+    radial-gradient(circle at 16% 12%, rgba(101, 87, 255, 0.18), transparent 31%),
+    radial-gradient(circle at 86% 18%, rgba(6, 182, 212, 0.16), transparent 29%),
+    linear-gradient(135deg, #f8f9ff 0%, #eef2ff 46%, #ffffff 100%) !important;
+}
+
+.vybe-auth-card {
+  max-width: 1120px !important;
+  border: 1px solid rgba(99, 102, 241, 0.18) !important;
+  border-radius: 28px !important;
+  background: rgba(255, 255, 255, 0.86) !important;
+  box-shadow: var(--vybe-shadow);
+  backdrop-filter: blur(22px);
+  animation: vybe-scale-in 0.42s ease both;
+}
+
+.vybe-auth-card > div:first-child {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.9)),
+    #ffffff;
+}
+
+.vybe-auth-card img[alt="logo"] {
+  filter: none !important;
+}
+
+.vybe-auth-card input {
+  color: var(--vybe-ink) !important;
+}
+
+.vybe-auth-card input::placeholder {
+  color: #98a2b3 !important;
+}
+
+.vybe-auth-card [class~="border-black"],
+.vybe-auth-page [class~="border-[#1a1f23]"] {
+  border-color: rgba(99, 102, 241, 0.22) !important;
+}
+
+.vybe-auth-card label {
+  color: #667085 !important;
+}
+
+.vybe-auth-card button[type="submit"],
+.vybe-auth-page button[type="submit"],
+.vybe-auth-card [class~="bg-black"]:not(.vybe-auth-brand) {
+  border-radius: 18px !important;
+  background-color: var(--vybe-brand) !important;
+  background: linear-gradient(135deg, var(--vybe-brand), var(--vybe-brand-2)) !important;
+  box-shadow: 0 18px 34px rgba(101, 87, 255, 0.24);
+}
+
+.vybe-auth-card button[type="submit"]:hover,
+.vybe-auth-page button[type="submit"]:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 22px 42px rgba(101, 87, 255, 0.3);
+}
+
+.vybe-auth-brand {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 28% 22%, rgba(101, 87, 255, 0.46), transparent 34%),
+    radial-gradient(circle at 78% 68%, rgba(6, 182, 212, 0.24), transparent 32%),
+    linear-gradient(145deg, #090b19 0%, #13162a 54%, #090b19 100%) !important;
+}
+
+.vybe-auth-brand::before {
+  content: "";
+  position: absolute;
+  inset: 8%;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  background:
+    linear-gradient(115deg, rgba(255, 255, 255, 0.08), transparent 38%),
+    transparent;
+  pointer-events: none;
+}
+
+.vybe-auth-brand img {
+  position: relative;
+  animation: vybe-float 6s ease-in-out infinite;
+}
+
+.vybe-auth-brand p {
+  position: relative;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.vybe-app-shell {
+  --vybe-app-bg: #f6f7ff;
+  --vybe-surface: rgba(255, 255, 255, 0.72);
+  --vybe-surface-strong: rgba(255, 255, 255, 0.94);
+  --vybe-panel: rgba(245, 247, 255, 0.72);
+  --vybe-border: rgba(99, 102, 241, 0.16);
+  --vybe-text: #111827;
+  --vybe-subtle: #667085;
+  min-height: 100svh;
+  isolation: isolate;
+  overflow-x: hidden;
+  background:
+    radial-gradient(circle at 11% 8%, rgba(101, 87, 255, 0.16), transparent 34%),
+    radial-gradient(circle at 86% 10%, rgba(6, 182, 212, 0.12), transparent 32%),
+    linear-gradient(180deg, #fbfcff 0%, var(--vybe-app-bg) 52%, #ffffff 100%) !important;
+}
+
+body.vybe-theme-active:not(.vybe-light) .vybe-app-shell {
+  --vybe-app-bg: #070914;
+  --vybe-surface: rgba(13, 17, 34, 0.78);
+  --vybe-surface-strong: rgba(10, 13, 26, 0.94);
+  --vybe-panel: rgba(18, 22, 42, 0.72);
+  --vybe-border: rgba(129, 140, 248, 0.18);
+  --vybe-text: #f8fafc;
+  --vybe-subtle: #98a2b3;
+  background:
+    radial-gradient(circle at 10% 8%, rgba(101, 87, 255, 0.2), transparent 35%),
+    radial-gradient(circle at 82% 12%, rgba(6, 182, 212, 0.12), transparent 28%),
+    linear-gradient(180deg, #050713 0%, #090b16 52%, #050713 100%) !important;
+}
+
+.vybe-app-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(rgba(99, 102, 241, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99, 102, 241, 0.04) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: linear-gradient(to bottom, black, transparent 72%);
+}
+
+.vybe-sidebar,
+.vybe-right-rail,
+.vybe-feed-panel {
+  border-color: var(--vybe-border) !important;
+  background: var(--vybe-surface) !important;
+  backdrop-filter: blur(26px) saturate(130%);
+}
+
+.vybe-sidebar,
+.vybe-right-rail {
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.vybe-feed-panel {
+  color: var(--vybe-text);
+  box-shadow: var(--vybe-shadow-soft);
+}
+
+.vybe-app-shell article,
+.vybe-app-shell [data-vybe-notification-panel],
+.vybe-app-shell .rounded-lg.border,
+.vybe-app-shell .rounded-2xl.border {
+  border-color: var(--vybe-border) !important;
+  box-shadow: 0 14px 42px rgba(15, 23, 42, 0.08);
+}
+
+.vybe-app-shell article {
+  border-radius: 22px !important;
+  background: var(--vybe-surface-strong) !important;
+  animation: vybe-fade-up 0.36s ease both;
+}
+
+.vybe-app-shell article:hover {
+  transform: translateY(-1px);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+  box-shadow: 0 20px 52px rgba(15, 23, 42, 0.12);
+}
+
+.vybe-app-shell input,
+.vybe-app-shell textarea {
+  border-radius: 16px !important;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.vybe-app-shell input:focus,
+.vybe-app-shell textarea:focus {
+  border-color: rgba(101, 87, 255, 0.46) !important;
+  box-shadow: 0 0 0 4px rgba(101, 87, 255, 0.12);
+}
+
+.vybe-app-shell button {
+  transition:
+    transform 0.16s ease,
+    background-color 0.16s ease,
+    color 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.vybe-app-shell button:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+.vybe-app-shell .bg-white {
+  background: linear-gradient(135deg, var(--vybe-brand), var(--vybe-brand-2)) !important;
+  color: #ffffff !important;
+}
+
+.vybe-app-shell .text-blue-500,
+.vybe-app-shell .text-blue-400 {
+  color: var(--vybe-brand) !important;
+}
+
+.vybe-app-shell .bg-blue-600 {
+  background: linear-gradient(135deg, var(--vybe-brand), var(--vybe-brand-2)) !important;
+}
+
+.vybe-app-shell [class~="bg-[#050505]"],
+.vybe-app-shell [class~="bg-[#080808]"],
+.vybe-app-shell [class~="bg-[#101010]"],
+.vybe-app-shell [class~="bg-[#111]"],
+.vybe-app-shell [class~="bg-[#171717]"],
+.vybe-app-shell [class~="bg-[#191919]"] {
+  background-color: var(--vybe-panel) !important;
+}
+
+.vybe-app-shell .border-gray-900,
+.vybe-app-shell .border-gray-800,
+.vybe-app-shell .border-gray-700 {
+  border-color: var(--vybe-border) !important;
+}
+
+.vybe-app-shell .vybe-mobile-bottom-nav {
+  border-color: var(--vybe-border) !important;
+  background: rgba(8, 10, 24, 0.86);
+  backdrop-filter: blur(24px) saturate(150%);
+  box-shadow: 0 -18px 40px rgba(0, 0, 0, 0.2);
+}
+
+body.vybe-theme-active.vybe-light .vybe-app-shell .vybe-mobile-bottom-nav {
+  background: rgba(255, 255, 255, 0.84) !important;
+  box-shadow: 0 -18px 40px rgba(15, 23, 42, 0.08);
+}
+
+.vybe-app-shell .vybe-mobile-bottom-fill {
+  background: transparent;
+}
+
+.vybe-app-shell [data-vybe-notification-panel],
+.vybe-app-shell [class~="shadow-2xl"] {
+  animation: vybe-scale-in 0.18s ease both;
+}
+
+.vybe-sidebar nav button:hover,
+.vybe-right-rail button:hover {
+  box-shadow: inset 3px 0 0 var(--vybe-brand);
+}
+
+@media (min-width: 1024px) {
+  .vybe-sidebar,
+  .vybe-right-rail {
+    margin: 12px 0;
+    min-height: calc(100vh - 24px) !important;
+    height: calc(100vh - 24px) !important;
+    border-radius: 0 28px 28px 0;
+  }
+
+  .vybe-right-rail {
+    border-radius: 28px 0 0 28px;
+  }
+
+  .vybe-feed-panel {
+    margin: 12px 14px;
+    height: calc(100vh - 24px) !important;
+    min-height: calc(100vh - 24px) !important;
+    border-radius: 28px;
+    overflow: hidden auto;
+  }
+}
+
+@media (max-width: 1023px) {
+  .vybe-app-shell {
+    background:
+      radial-gradient(circle at 20% 0%, rgba(101, 87, 255, 0.14), transparent 36%),
+      #050713 !important;
+  }
+
+  .vybe-feed-panel {
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .vybe-app-shell article {
+    border-radius: 18px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+}

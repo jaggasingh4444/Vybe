@@ -198,7 +198,7 @@ function SignUp() {
     actionLoading || (!otpSent && !detailsComplete) || (otpSent && otp.trim().length < 6);
 
   return (
-    <div className="w-full h-screen bg-gradient-to-b from-black to-gray-900 flex justify-center items-center">
+    <div className="vybe-auth-page w-full h-screen bg-gradient-to-b from-black to-gray-900 flex justify-center items-center">
       {toast.show && (
         <div
           className={`fixed top-8 right-8 px-6 py-4 rounded-lg shadow-xl z-50 ${
@@ -209,7 +209,7 @@ function SignUp() {
         </div>
       )}
 
-      <div className="flex w-[90%] lg:max-w-[60%] min-h-[650px] bg-white text-black rounded-2xl overflow-hidden border-2 border-black">
+      <div className="vybe-auth-card flex w-[90%] lg:max-w-[60%] min-h-[650px] bg-white text-black rounded-2xl overflow-hidden border-2 border-black">
         <div className="w-full lg:w-1/2 flex flex-col items-center p-6 gap-5">
           <div className="flex gap-2 items-center text-xl font-semibold mt-10">
             <span>{otpSent ? "Verify" : "Sign Up to"}</span>
@@ -315,7 +315,7 @@ function SignUp() {
           </p>
         </div>
 
-        <div className="hidden lg:flex w-1/2 bg-black text-white flex-col justify-center items-center">
+        <div className="vybe-auth-brand hidden lg:flex w-1/2 bg-black text-white flex-col justify-center items-center">
           <img src={logo1} alt="" className="w-[40%]" />
           <p>Not Just A Platform, It's A VYBE</p>
         </div>

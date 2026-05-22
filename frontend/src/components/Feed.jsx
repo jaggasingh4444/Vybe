@@ -4086,7 +4086,7 @@ function Feed() {
       ref={feedRootRef}
       data-vybe-feed-root
       style={mobileShellStyle}
-      className={`vybe-mobile-shell w-full lg:flex-1 lg:max-w-[840px] xl:max-w-[900px] bg-black relative border-x border-gray-900 ${
+      className={`vybe-feed-panel vybe-mobile-shell w-full lg:flex-1 lg:max-w-[840px] xl:max-w-[900px] bg-black relative border-x border-gray-900 ${
         isMobileChatTab ? "pb-0" : ""
       } lg:pb-0 ${
         isMobileChatTab

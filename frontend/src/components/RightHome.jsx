@@ -1328,7 +1328,7 @@ function RightHome() {
   };
 
   return (
-    <aside className="hidden lg:flex lg:w-[300px] xl:w-[360px] shrink-0 h-screen sticky top-0 bg-black flex-col px-5 py-6 border-l border-gray-900 overflow-hidden">
+    <aside className="vybe-right-rail hidden lg:flex lg:w-[300px] xl:w-[360px] shrink-0 h-screen sticky top-0 bg-black flex-col px-5 py-6 border-l border-gray-900 overflow-hidden">
       <div className="flex items-center justify-between mb-4 shrink-0">
         <h2 className="text-white font-semibold">Suggested</h2>
         <span className="text-gray-500 text-sm">{followSuggestionUsers.length}</span>
