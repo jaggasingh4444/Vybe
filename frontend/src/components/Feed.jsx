@@ -5435,7 +5435,7 @@ function Feed() {
 	                  : "vybe-feed-card border border-gray-900 rounded-lg overflow-hidden bg-black"
 	              }
 	            >
-              <div className="relative z-20 flex items-center justify-between px-4 py-3">
+              <div className="vybe-feed-card-header flex items-center justify-between px-4 py-3">
                 <div className="flex min-w-0 flex-1 items-center gap-3">
                   <button
                     type="button"
@@ -5483,7 +5483,7 @@ function Feed() {
                   </div>
                 </div>
                 {isOwnAuthor ? (
-                  <div className="relative z-30 shrink-0">
+                  <div className="vybe-feed-card-options shrink-0">
                     <button
                       type="button"
                       onClick={() => setFeedItemMenuKey((currentKey) => (currentKey === contentKey ? "" : contentKey))}
@@ -5496,7 +5496,7 @@ function Feed() {
                       <FiMoreVertical />
                     </button>
                     {feedItemMenuOpen ? (
-                      <div className="absolute right-0 top-11 z-[80] w-52 overflow-hidden rounded-xl border border-gray-700 bg-[#050505] shadow-2xl ring-1 ring-black/40">
+                      <div className="vybe-feed-card-menu absolute right-0 top-11 w-52 overflow-hidden rounded-xl border border-gray-700 bg-[#050505] shadow-2xl ring-1 ring-black/40">
                         <button
                           type="button"
                           onClick={() => requestContentDelete(item)}

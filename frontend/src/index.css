@@ -692,6 +692,21 @@ body.vybe-theme-active:not(.vybe-light) .vybe-app-shell {
   z-index: 1;
 }
 
+.vybe-feed-card .vybe-feed-card-header {
+  position: relative;
+  z-index: 40;
+  overflow: visible;
+}
+
+.vybe-feed-card .vybe-feed-card-options {
+  position: relative;
+  z-index: 50;
+}
+
+.vybe-feed-card .vybe-feed-card-menu {
+  z-index: 90;
+}
+
 .vybe-feed-card:hover::before {
   opacity: 1;
   animation: vybe-soft-pulse 1.4s ease-in-out;
