@@ -402,70 +402,20 @@ const uploadJsonWithProgress = ({ url, payload, onProgress, errorMessage = "Uplo
     xhr.send(JSON.stringify(payload));
   });
 
-const uploadContentMedia = (file, onProgress) =>
+const uploadContentWithFile = ({ url, file, caption, mediaType, onProgress }) =>
   new Promise((resolve, reject) => {
     if (!file) {
-      resolve(null);
-      return;
-    }
-
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", apiUrl("/api/content/uploads"), true);
-    xhr.withCredentials = true;
-    xhr.timeout = CONTENT_MEDIA_UPLOAD_TIMEOUT_MS;
-
-    getTabAuthHeaders({
-      "Content-Type": file.type || "application/octet-stream",
-    }).forEach((value, key) => {
-      xhr.setRequestHeader(key, value);
-    });
-
-    xhr.upload.onprogress = (event) => {
-      if (!event.lengthComputable) return;
-
-      const progress = Math.max(1, Math.min(100, Math.round((event.loaded / event.total) * 100)));
-      onProgress?.(progress);
-    };
-
-    xhr.onload = () => {
-      let data = {};
-
-      try {
-        data = xhr.responseText ? JSON.parse(xhr.responseText) : {};
-      } catch {
-        data = {};
-      }
-
-      if (xhr.status < 200 || xhr.status >= 300) {
-        reject(new Error(data.message || "Media upload failed"));
-        return;
-      }
-
-      onProgress?.(100);
-      resolve({
-        media: data.media,
-        mediaType: data.mediaType || (file.type.startsWith("video/") ? "video" : "image"),
-      });
-    };
-
-    xhr.onerror = () => reject(new Error("Media upload failed"));
-    xhr.ontimeout = () => reject(new Error("Media upload is taking too long"));
-    xhr.onabort = () => reject(new Error("Media upload cancelled"));
-    xhr.send(file);
-  });
-
-const uploadContentMediaFormData = (file, onProgress) =>
-  new Promise((resolve, reject) => {
-    if (!file) {
-      resolve(null);
+      reject(new Error("Choose a media file."));
       return;
     }
 
     const formData = new FormData();
+    formData.append("caption", caption || "");
+    formData.append("mediaType", mediaType || (file.type.startsWith("video/") ? "video" : "image"));
     formData.append("media", file);
 
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", apiUrl("/api/content/upload-media"), true);
+    xhr.open("POST", url, true);
     xhr.withCredentials = true;
     xhr.timeout = CONTENT_MEDIA_UPLOAD_TIMEOUT_MS;
 
@@ -490,49 +440,19 @@ const uploadContentMediaFormData = (file, onProgress) =>
       }
 
       if (xhr.status < 200 || xhr.status >= 300) {
-        reject(new Error(data.message || "Media upload failed"));
-        return;
-      }
-
-      const media = data.media || data.url;
-      if (!media) {
-        reject(new Error("Media upload failed"));
+        reject(new Error(data.message || "Upload failed"));
         return;
       }
 
       onProgress?.(100);
-      resolve({
-        media,
-        mediaType: data.mediaType || (file.type.startsWith("video/") ? "video" : "image"),
-      });
+      resolve(data);
     };
 
-    xhr.onerror = () => reject(new Error("Media upload failed"));
-    xhr.ontimeout = () => reject(new Error("Media upload is taking too long"));
-    xhr.onabort = () => reject(new Error("Media upload cancelled"));
+    xhr.onerror = () => reject(new Error("Upload failed"));
+    xhr.ontimeout = () => reject(new Error("Upload is taking too long"));
+    xhr.onabort = () => reject(new Error("Upload cancelled"));
     xhr.send(formData);
   });
-
-const uploadContentMediaReliable = async (file, onProgress) => {
-  if (!file) return null;
-
-  try {
-    return await uploadContentMedia(file, onProgress);
-  } catch (rawUploadError) {
-    try {
-      return await uploadContentMediaFormData(file, onProgress);
-    } catch (formUploadError) {
-      if (file.type.startsWith("image/")) {
-        return {
-          media: await readFileAsDataUrl(file),
-          mediaType: "image",
-        };
-      }
-
-      throw formUploadError || rawUploadError;
-    }
-  }
-};
 
 const uploadChatAttachment = (attachment) =>
   new Promise((resolve, reject) => {
@@ -2271,30 +2191,20 @@ function Feed() {
     try {
       const uploadMode = selectedFile && selectedMediaType === "video" ? "reel" : "post";
       const endpoint = uploadMode === "reel" ? "/api/content/reels" : "/api/content/posts";
-      const uploadedMedia = selectedFile
-        ? await uploadContentMediaReliable(selectedFile, (progress) => {
-            setUploadProgress(Math.max(6, Math.min(92, Math.round(progress * 0.9))));
+      const data = selectedFile
+        ? await uploadContentWithFile({
+            url: apiUrl(endpoint),
+            file: selectedFile,
+            caption: trimmedCaption,
+            mediaType: uploadMode === "reel" ? "video" : selectedMediaType,
+            onProgress: (progress) => setUploadProgress(Math.max(6, progress)),
           })
-        : null;
-      const payload =
-        uploadMode === "reel"
-          ? { caption: trimmedCaption, media: uploadedMedia?.media, mediaType: "video" }
-          : selectedFile
-            ? { caption: trimmedCaption, media: uploadedMedia?.media, mediaType: uploadedMedia?.mediaType || selectedMediaType }
-            : { caption: trimmedCaption };
-      setUploadProgress(selectedFile ? 92 : 8);
-
-      const data = await uploadJsonWithProgress({
-        url: apiUrl(endpoint),
-        payload,
-        onProgress: (progress) =>
-          setUploadProgress(
-            selectedFile
-              ? Math.max(92, Math.min(100, 92 + Math.round(progress * 0.08)))
-              : Math.max(8, progress)
-          ),
-        errorMessage: "Upload failed",
-      });
+        : await uploadJsonWithProgress({
+            url: apiUrl(endpoint),
+            payload: { caption: trimmedCaption },
+            onProgress: (progress) => setUploadProgress(Math.max(8, progress)),
+            errorMessage: "Upload failed",
+          });
 
       setFeed((currentFeed) => [
         data,

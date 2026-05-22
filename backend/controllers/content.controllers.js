@@ -416,8 +416,18 @@ export const deleteStory = async (req, res) => {
 
 export const createPost = async (req, res) => {
   try {
-    const { caption = "", media, mediaType } = req.body;
+    const { caption = "", media: bodyMedia, mediaType: bodyMediaType } = req.body;
     const trimmedCaption = caption.trim();
+    const uploadedFile = req.file;
+    const fileMediaType = uploadedFile?.mimetype?.startsWith("video/")
+      ? "video"
+      : uploadedFile?.mimetype?.startsWith("image/")
+        ? "image"
+        : "";
+    const mediaType = uploadedFile ? fileMediaType : bodyMediaType;
+    const media = uploadedFile
+      ? await saveBinaryMedia(uploadedFile.buffer, uploadedFile.mimetype, "content", req)
+      : bodyMedia;
     const hasMedia = Boolean(media);
 
     if (!hasMedia && !trimmedCaption) {
@@ -455,13 +465,26 @@ export const createPost = async (req, res) => {
 
 export const createReel = async (req, res) => {
   try {
-    const { caption = "", media, mediaType = "video" } = req.body;
+    const { caption = "", media: bodyMedia, mediaType: bodyMediaType = "video" } = req.body;
+    const uploadedFile = req.file;
+    const mediaType = uploadedFile ? "video" : bodyMediaType;
+    const media = uploadedFile
+      ? await saveBinaryMedia(uploadedFile.buffer, uploadedFile.mimetype, "content", req)
+      : bodyMedia;
 
-    if (mediaType !== "video" || (!isStoredMediaUrl(media) && (!isDataUrl(media) || !media.startsWith("data:video/")))) {
+    if (
+      mediaType !== "video" ||
+      !media ||
+      (!uploadedFile && !isStoredMediaUrl(media) && (!isDataUrl(media) || !media.startsWith("data:video/")))
+    ) {
       return res.status(400).json({ message: "Reel upload must be a video file" });
     }
 
-    const storedMedia = isDataUrl(media) ? await saveDataUrlMedia(media, "content", req) : media;
+    const storedMedia = uploadedFile
+      ? media
+      : isDataUrl(media)
+        ? await saveDataUrlMedia(media, "content", req)
+        : media;
     const reel = await Loop.create({
       author: req.userId,
       mediaType: "video",

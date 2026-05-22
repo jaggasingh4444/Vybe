@@ -76,8 +76,8 @@ contentRouter.post(
   express.raw({ type: ["image/*", "video/*", "application/octet-stream"], limit: "80mb" }),
   uploadContentMedia
 );
-contentRouter.post("/posts", isAuth, createPost);
-contentRouter.post("/reels", isAuth, createReel);
+contentRouter.post("/posts", isAuth, upload.single("media"), createPost);
+contentRouter.post("/reels", isAuth, upload.single("media"), createReel);
 contentRouter.post("/upload-media", isAuth, upload.single("media"), uploadMediaToS3);
 contentRouter.post("/stories", isAuth, createStory);
 contentRouter.post("/stories/:storyId/view", isAuth, viewStory);
