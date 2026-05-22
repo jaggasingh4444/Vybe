@@ -15,4 +15,5 @@ artifacts:
   base-directory: backend
   files:
     - '**/*'
+    - '.platform/**/*'
   discard-paths: no

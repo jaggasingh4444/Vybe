@@ -472,28 +472,94 @@ const uploadRawContentMedia = ({ file, mediaType, onProgress }) =>
     xhr.send(file);
   });
 
+const uploadMultipartContent = ({ url, file, caption, mediaType, onProgress }) =>
+  new Promise((resolve, reject) => {
+    if (!file) {
+      reject(new Error("Choose a media file."));
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("caption", caption || "");
+    formData.append("mediaType", mediaType || getFileMediaType(file));
+    formData.append("media", file);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url, true);
+    xhr.withCredentials = true;
+    xhr.timeout = CONTENT_MEDIA_UPLOAD_TIMEOUT_MS;
+
+    getTabAuthHeaders().forEach((value, key) => {
+      xhr.setRequestHeader(key, value);
+    });
+
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable) return;
+
+      const progress = Math.max(1, Math.min(98, Math.round((event.loaded / event.total) * 98)));
+      onProgress?.(progress);
+    };
+
+    xhr.onload = () => {
+      let data = {};
+
+      try {
+        data = xhr.responseText ? JSON.parse(xhr.responseText) : {};
+      } catch {
+        data = {};
+      }
+
+      if (xhr.status < 200 || xhr.status >= 300) {
+        reject(new Error(data.message || "Upload failed"));
+        return;
+      }
+
+      onProgress?.(100);
+      resolve(data);
+    };
+
+    xhr.onerror = () => reject(new Error("Upload failed. Check your connection and try again."));
+    xhr.ontimeout = () => reject(new Error("Upload is taking too long. Please try a smaller file."));
+    xhr.onabort = () => reject(new Error("Upload cancelled."));
+    xhr.send(formData);
+  });
+
 const uploadContentWithFile = async ({ url, file, caption, mediaType, onProgress }) => {
   if (!file) {
     throw new Error("Choose a media file.");
   }
 
   const resolvedMediaType = mediaType || getFileMediaType(file);
-  const uploadedMedia = await uploadRawContentMedia({
-    file,
-    mediaType: resolvedMediaType,
-    onProgress,
-  });
 
-  return uploadJsonWithProgress({
-    url,
-    payload: {
-      caption: caption || "",
-      media: uploadedMedia.media,
-      mediaType: uploadedMedia.mediaType || resolvedMediaType,
-    },
-    onProgress: (progress) => onProgress?.(Math.max(94, progress)),
-    errorMessage: "Upload failed",
-  });
+  try {
+    const uploadedMedia = await uploadRawContentMedia({
+      file,
+      mediaType: resolvedMediaType,
+      onProgress,
+    });
+
+    return await uploadJsonWithProgress({
+      url,
+      payload: {
+        caption: caption || "",
+        media: uploadedMedia.media,
+        mediaType: uploadedMedia.mediaType || resolvedMediaType,
+      },
+      onProgress: (progress) => onProgress?.(Math.max(94, progress)),
+      errorMessage: "Upload failed",
+    });
+  } catch (rawUploadError) {
+    console.warn("Raw media upload failed; retrying with multipart upload.", rawUploadError);
+    onProgress?.(8);
+
+    return uploadMultipartContent({
+      url,
+      file,
+      caption,
+      mediaType: resolvedMediaType,
+      onProgress,
+    });
+  }
 };
 
 const uploadChatAttachment = (attachment) =>

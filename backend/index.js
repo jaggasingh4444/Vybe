@@ -54,6 +54,21 @@ app.use("/api/chat", chatRouter);
 app.use("/api/content", contentRouter);
 app.use("/api/users", userRouter);
 
+app.use((error, _req, res, _next) => {
+  const status =
+    error?.code === "LIMIT_FILE_SIZE" ||
+    error?.type === "entity.too.large" ||
+    error?.status === 413
+      ? 413
+      : error?.status || error?.statusCode || 500;
+  const message =
+    status === 413
+      ? "Media file is too large for upload."
+      : error?.message || "Server error";
+
+  return res.status(status).json({ message });
+});
+
 // Start server and connect DB
 connectDb().then(() => {
   app.listen(port, () => {
