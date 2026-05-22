@@ -641,6 +641,8 @@ function Feed() {
   const [selectedProfileItem, setSelectedProfileItem] = useState(null);
   const [focusedNotificationTarget, setFocusedNotificationTarget] = useState(null);
   const [profileItemMenuOpen, setProfileItemMenuOpen] = useState(false);
+  const [feedItemMenuKey, setFeedItemMenuKey] = useState("");
+  const [deleteConfirmItem, setDeleteConfirmItem] = useState(null);
   const [connectionsPanel, setConnectionsPanel] = useState({
     open: false,
     type: "followers",
@@ -2687,6 +2689,21 @@ function Feed() {
     }
   };
 
+  const requestContentDelete = (item) => {
+    if (!item?._id) return;
+    setFeedItemMenuKey("");
+    setProfileItemMenuOpen(false);
+    setDeleteConfirmItem(item);
+  };
+
+  const confirmContentDelete = async () => {
+    const item = deleteConfirmItem;
+    if (!item?._id) return;
+
+    await handleDeleteContent(item);
+    setDeleteConfirmItem(null);
+  };
+
   const saveConfirmedMobileMessage = (message, tempId) => {
     setMobileMessages((current) => {
       const withoutTemp = tempId
@@ -3676,6 +3693,8 @@ function Feed() {
     isTextPost(selectedProfileItem) || brokenMediaKeys.has(selectedProfileItemKey);
   const selectedProfileItemIsOwn = isSameId(selectedProfileItem?.author?._id, userData?._id);
   const selectedProfileItemDeletePending = pendingContentDeleteIds.has(selectedProfileItemKey);
+  const deleteConfirmItemKey = getContentKey(deleteConfirmItem);
+  const deleteConfirmPending = pendingContentDeleteIds.has(deleteConfirmItemKey);
   const profileIsFollowing = activeProfileUser?._id
     ? mobileFollowingIds.has(activeProfileUser._id)
     : false;
@@ -5405,6 +5424,7 @@ function Feed() {
             const authorIsFollowing = authorId ? mobileFollowingIds.has(authorId) : false;
             const showAuthorFollow = Boolean(authorId && !isOwnAuthor && !authorIsFollowing);
             const renderAsTextPost = isTextPost(item) || brokenMediaKeys.has(contentKey);
+            const feedItemMenuOpen = feedItemMenuKey === contentKey;
 
             return (
 	            <article
@@ -5463,15 +5483,33 @@ function Feed() {
                   </div>
                 </div>
                 {isOwnAuthor ? (
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteContent(item)}
-                    disabled={deletePending}
-                    className="w-9 h-9 rounded-full hover:bg-[#111] text-gray-400 hover:text-red-400 flex items-center justify-center disabled:opacity-40"
-                    aria-label="Delete post"
-                  >
-                    <FiTrash2 />
-                  </button>
+                  <div className="relative shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setFeedItemMenuKey((currentKey) => (currentKey === contentKey ? "" : contentKey))}
+                      disabled={deletePending}
+                      className="w-9 h-9 rounded-full hover:bg-[#111] text-gray-400 hover:text-white flex items-center justify-center disabled:opacity-40"
+                      aria-label="Post options"
+                      aria-haspopup="menu"
+                      aria-expanded={feedItemMenuOpen}
+                    >
+                      <FiMoreVertical />
+                    </button>
+                    {feedItemMenuOpen ? (
+                      <div className="absolute right-0 top-10 z-30 w-48 overflow-hidden rounded-lg border border-gray-800 bg-[#080808] shadow-2xl">
+                        <button
+                          type="button"
+                          onClick={() => requestContentDelete(item)}
+                          disabled={deletePending}
+                          className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-red-400 hover:bg-[#141414] disabled:opacity-50"
+                          role="menuitem"
+                        >
+                          <FiTrash2 />
+                          {deletePending ? "Deleting..." : `Delete ${item.type === "reel" ? "reel" : "post"}`}
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
                 ) : null}
               </div>
 
@@ -5815,6 +5853,44 @@ function Feed() {
         </div>
       ) : null}
 
+      {deleteConfirmItem ? (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/75 px-4">
+          <div className="w-full max-w-[360px] rounded-2xl border border-gray-800 bg-[#050505] p-5 text-white shadow-2xl">
+            <div className="mb-4 flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-red-500/10 text-red-400">
+                <FiTrash2 />
+              </div>
+              <div className="min-w-0">
+                <p className="text-lg font-semibold">
+                  Delete {deleteConfirmItem.type === "reel" ? "reel" : "post"}?
+                </p>
+                <p className="mt-1 text-sm leading-relaxed text-gray-500">
+                  Are you sure you want to delete this {deleteConfirmItem.type === "reel" ? "reel" : "post"}? This action can't be undone.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmItem(null)}
+                disabled={deleteConfirmPending}
+                className="h-11 flex-1 rounded-xl bg-[#171717] text-sm font-semibold text-gray-200 hover:bg-[#202020] disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmContentDelete}
+                disabled={deleteConfirmPending}
+                className="h-11 flex-1 rounded-xl bg-red-500 text-sm font-semibold text-white hover:bg-red-600 disabled:opacity-50"
+              >
+                {deleteConfirmPending ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {shareItem ? (
         <div className="vybe-create-overlay fixed inset-0 z-[60] bg-black/80 flex items-end sm:items-center justify-center px-0 sm:px-4">
           <div className="w-full sm:max-w-[420px] max-h-[82vh] overflow-hidden rounded-t-2xl sm:rounded-lg border-t sm:border border-gray-800 bg-[#050505] text-white">
@@ -5955,8 +6031,7 @@ function Feed() {
                         <button
                           type="button"
                           onClick={() => {
-                            setProfileItemMenuOpen(false);
-                            handleDeleteContent(selectedProfileItem);
+                            requestContentDelete(selectedProfileItem);
                           }}
                           disabled={selectedProfileItemDeletePending}
                           className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-red-400 hover:bg-[#141414] disabled:opacity-50"
