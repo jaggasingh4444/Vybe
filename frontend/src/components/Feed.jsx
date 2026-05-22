@@ -681,6 +681,7 @@ function Feed() {
   const pendingCommentDeleteIdsRef = useRef(new Set());
   const selectedMobileChatRef = useRef(null);
   const mobileMessagesRef = useRef([]);
+  const feedSearchInputRef = useRef(null);
   const mobileMessageSyncingRef = useRef(false);
   const mobileChatUsersSyncingRef = useRef(false);
   const mobileMessagesListRef = useRef(null);
@@ -1229,6 +1230,7 @@ function Feed() {
 
   const refreshHomeFeed = () => {
     setActiveMobileTab("home");
+    setFeedSearch("");
     setCreateOpen(false);
     setSelectedStory(null);
     setSelectedProfileItem(null);
@@ -1403,7 +1405,7 @@ function Feed() {
   useEffect(() => {
     const query = feedSearch.trim();
 
-    if (!query || activeMobileTab === "chat" || activeMobileTab === "profile") {
+    if (!query || activeMobileTab !== "search") {
       setFeedUserResults([]);
       setFeedUserSearchLoading(false);
       return;
@@ -1648,6 +1650,15 @@ function Feed() {
 
       if (action === "home") {
         refreshHomeFeedRef.current?.();
+      }
+
+      if (action === "search") {
+        setActiveMobileTab("search");
+        setCreateOpen(false);
+        setSelectedStory(null);
+        setSelectedProfileItem(null);
+        setMessage("");
+        requestAnimationFrame(() => feedSearchInputRef.current?.focus());
       }
 
       if (action === "create") {
@@ -3443,7 +3454,7 @@ function Feed() {
   const baseVisibleFeed = activeMobileTab === "reels"
     ? feed.filter((item) => item.type === "reel")
     : feed;
-  const normalizedFeedSearch = feedSearch.trim().toLowerCase();
+  const normalizedFeedSearch = activeMobileTab === "search" ? feedSearch.trim().toLowerCase() : "";
   const normalizedFeedSearchId = normalizedFeedSearch.replace(/^@/, "");
   const visibleFeed = normalizedFeedSearch
     ? baseVisibleFeed.filter((item) =>
@@ -4108,7 +4119,9 @@ function Feed() {
                 ? "Reels"
                 : activeMobileTab === "profile"
                   ? profileTitle
-                  : "Home"}
+                  : activeMobileTab === "search"
+                    ? "Search"
+                    : "Home"}
           </h1>
         </div>
         <div className="relative flex items-center gap-2">
@@ -4228,14 +4241,15 @@ function Feed() {
         </div>
       </div>
 
-      {activeMobileTab === "home" || activeMobileTab === "reels" ? (
+      {activeMobileTab === "search" ? (
         <div className="border-b border-gray-900 px-5 py-3">
           <div className="relative">
             <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
             <input
+              ref={feedSearchInputRef}
               value={feedSearch}
               onChange={(event) => setFeedSearch(event.target.value)}
-              placeholder={activeMobileTab === "reels" ? "Search reels or username" : "Search feed or username"}
+              placeholder="Search feed, reels, or username"
               className="w-full h-11 rounded-lg bg-[#101010] border border-gray-900 pl-10 pr-3 text-sm text-white outline-none placeholder:text-gray-600"
             />
           </div>
@@ -4314,7 +4328,11 @@ function Feed() {
       ) : null}
 
       <div className={`w-full overflow-x-auto border-b border-gray-900 px-5 py-4 ${
-        activeMobileTab === "profile" ? "hidden" : activeMobileTab !== "home" ? "hidden lg:block" : ""
+        activeMobileTab === "profile" || activeMobileTab === "search"
+          ? "hidden"
+          : activeMobileTab !== "home"
+            ? "hidden lg:block"
+            : ""
       }`}>
         <div className="flex gap-4 min-w-max">
           <div
@@ -5191,6 +5209,16 @@ function Feed() {
               </p>
             ) : null}
           </div>
+        ) : activeMobileTab === "search" && !normalizedFeedSearch ? (
+          <section className="rounded-lg border border-gray-900 bg-[#050505] px-6 py-12 text-center">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#101010] text-2xl text-white">
+              <FiSearch />
+            </div>
+            <p className="text-white text-lg font-semibold">Search VYBE</p>
+            <p className="mx-auto mt-2 max-w-sm text-sm text-gray-500">
+              Find people by username, or search posts and reels by captions, comments, and profile names.
+            </p>
+          </section>
         ) : loadingFeed ? (
           <div className="text-gray-500 text-center py-12">Loading feed...</div>
         ) : visibleFeed.length > 0 ? (
@@ -6621,7 +6649,7 @@ function Feed() {
 
       <div
         className={`vybe-mobile-bottom-nav lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-gray-900 ${
-          hideMobileChatNav ? "hidden" : "grid grid-cols-4"
+          hideMobileChatNav ? "hidden" : "grid grid-cols-5"
         }`}
       >
         <button
@@ -6633,6 +6661,23 @@ function Feed() {
         >
           <FiHome className="text-xl" />
           <span className="text-xs font-semibold">Home</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveMobileTab("search");
+            setCreateOpen(false);
+            setSelectedStory(null);
+            setSelectedProfileItem(null);
+            setMessage("");
+            requestAnimationFrame(() => feedSearchInputRef.current?.focus());
+          }}
+          className={`h-full flex flex-col items-center justify-center gap-1 ${
+            activeMobileTab === "search" ? "text-white" : "text-gray-500"
+          }`}
+        >
+          <FiSearch className="text-xl" />
+          <span className="text-xs font-semibold">Search</span>
         </button>
         <button
           type="button"

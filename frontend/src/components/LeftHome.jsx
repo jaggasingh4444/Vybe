@@ -16,6 +16,7 @@ import {
   FiMoon,
   FiPlusSquare,
   FiSave,
+  FiSearch,
   FiSettings,
   FiSun,
   FiUser,
@@ -212,6 +213,7 @@ function LeftHome() {
 
   const menuItems = [
     { icon: <FiHome />, label: "Home", value: "Feed", action: "home" },
+    { icon: <FiSearch />, label: "Search", value: "Explore", action: "search" },
     { icon: <FiPlusSquare />, label: "Create", value: "Post/Reel", action: "create" },
     { icon: <FiMessageCircle />, label: "Messages", value: "Live", action: "messages" },
     { icon: <FiBookmark />, label: "Saved", value: userData?.saved?.length || 0, action: "saved" },
