@@ -3,7 +3,13 @@ import Notification from "../models/notification.model.js";
 import Post from "../models/post.model.js";
 import Story from "../models/story.model.js";
 import User from "../models/user.model.js";
-import { isDataUrl, isStoredMediaUrl, saveBinaryMedia, saveDataUrlMedia } from "../utils/mediaStorage.js";
+import {
+  inferMediaInfo,
+  isDataUrl,
+  isStoredMediaUrl,
+  saveBinaryMedia,
+  saveDataUrlMedia,
+} from "../utils/mediaStorage.js";
 
 const contentClients = new Map();
 const notificationClients = new Map();
@@ -329,24 +335,30 @@ export const createStory = async (req, res) => {
   try {
     const { media: bodyMedia, mediaType: bodyMediaType } = req.body;
     const uploadedFile = req.file;
-    const fileMediaType = uploadedFile?.mimetype?.startsWith("video/")
-      ? "video"
-      : uploadedFile?.mimetype?.startsWith("image/")
-        ? "image"
-        : "";
+    const fileInfo = inferMediaInfo({
+      mimeType: uploadedFile?.mimetype,
+      fileName: uploadedFile?.originalname,
+      fallbackMediaType: bodyMediaType,
+    });
+    const fileMediaType = fileInfo.mediaKind;
     const mediaType = uploadedFile ? fileMediaType : bodyMediaType;
 
     if (!["image", "video"].includes(mediaType)) {
       return res.status(400).json({ message: "Story media must be an image or video" });
     }
 
-    if (!uploadedFile && !isDataUrl(bodyMedia)) {
+    if (!uploadedFile && !isDataUrl(bodyMedia) && !isStoredMediaUrl(bodyMedia)) {
       return res.status(400).json({ message: "Valid story media is required" });
     }
 
     const storedMedia = uploadedFile
-      ? await saveBinaryMedia(uploadedFile.buffer, uploadedFile.mimetype, "stories", req)
-      : await saveDataUrlMedia(bodyMedia, "stories", req);
+      ? await saveBinaryMedia(uploadedFile.buffer, fileInfo.mimeType, "stories", req, {
+          fileName: uploadedFile.originalname,
+          mediaType,
+        })
+      : isDataUrl(bodyMedia)
+        ? await saveDataUrlMedia(bodyMedia, "stories", req)
+        : bodyMedia;
 
     if (!storedMedia) {
       return res.status(400).json({ message: "Story media upload failed" });
@@ -433,14 +445,18 @@ export const createPost = async (req, res) => {
     const { caption = "", media: bodyMedia, mediaType: bodyMediaType } = req.body;
     const trimmedCaption = caption.trim();
     const uploadedFile = req.file;
-    const fileMediaType = uploadedFile?.mimetype?.startsWith("video/")
-      ? "video"
-      : uploadedFile?.mimetype?.startsWith("image/")
-        ? "image"
-        : "";
+    const fileInfo = inferMediaInfo({
+      mimeType: uploadedFile?.mimetype,
+      fileName: uploadedFile?.originalname,
+      fallbackMediaType: bodyMediaType,
+    });
+    const fileMediaType = fileInfo.mediaKind;
     const mediaType = uploadedFile ? fileMediaType : bodyMediaType;
     const media = uploadedFile
-      ? await saveBinaryMedia(uploadedFile.buffer, uploadedFile.mimetype, "content", req)
+      ? await saveBinaryMedia(uploadedFile.buffer, fileInfo.mimeType, "content", req, {
+          fileName: uploadedFile.originalname,
+          mediaType,
+        })
       : bodyMedia;
     const hasMedia = Boolean(media);
 
@@ -481,9 +497,17 @@ export const createReel = async (req, res) => {
   try {
     const { caption = "", media: bodyMedia, mediaType: bodyMediaType = "video" } = req.body;
     const uploadedFile = req.file;
-    const mediaType = uploadedFile ? "video" : bodyMediaType;
+    const fileInfo = inferMediaInfo({
+      mimeType: uploadedFile?.mimetype,
+      fileName: uploadedFile?.originalname,
+      fallbackMediaType: "video",
+    });
+    const mediaType = uploadedFile ? fileInfo.mediaKind : bodyMediaType;
     const media = uploadedFile
-      ? await saveBinaryMedia(uploadedFile.buffer, uploadedFile.mimetype, "content", req)
+      ? await saveBinaryMedia(uploadedFile.buffer, fileInfo.mimeType, "content", req, {
+          fileName: uploadedFile.originalname,
+          mediaType,
+        })
       : bodyMedia;
 
     if (
@@ -520,11 +544,12 @@ export const createReel = async (req, res) => {
 export const uploadContentMedia = async (req, res) => {
   try {
     const contentType = req.get("content-type")?.split(";")[0]?.trim() || "";
-    const mediaType = contentType.startsWith("video/")
-      ? "video"
-      : contentType.startsWith("image/")
-        ? "image"
-        : "";
+    const mediaInfo = inferMediaInfo({
+      mimeType: contentType,
+      fileName: req.get("x-media-name") || "",
+      fallbackMediaType: req.get("x-media-type") || "",
+    });
+    const mediaType = mediaInfo.mediaKind;
 
     if (!mediaType) {
       return res.status(400).json({ message: "Upload must be an image or video" });
@@ -534,7 +559,10 @@ export const uploadContentMedia = async (req, res) => {
       return res.status(400).json({ message: "Media file is empty" });
     }
 
-    const media = await saveBinaryMedia(req.body, contentType, "content", req);
+    const media = await saveBinaryMedia(req.body, mediaInfo.mimeType, "content", req, {
+      fileName: req.get("x-media-name") || "",
+      mediaType,
+    });
     if (!media) {
       return res.status(400).json({ message: "Media upload failed" });
     }

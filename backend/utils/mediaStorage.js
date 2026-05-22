@@ -16,9 +16,73 @@ const extensionMap = {
   "quicktime": "mov",
   "x-msvideo": "avi",
 };
+const extensionMimeMap = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  gif: "image/gif",
+  webp: "image/webp",
+  heic: "image/heic",
+  heif: "image/heif",
+  avif: "image/avif",
+  svg: "image/svg+xml",
+  mp4: "video/mp4",
+  m4v: "video/mp4",
+  mov: "video/quicktime",
+  qt: "video/quicktime",
+  webm: "video/webm",
+  avi: "video/x-msvideo",
+  ogv: "video/ogg",
+  ogg: "video/ogg",
+  "3gp": "video/3gpp",
+};
 
 export const isDataUrl = (value) =>
   typeof value === "string" && dataUrlPattern.test(value);
+
+export const inferMediaInfo = ({ mimeType = "", fileName = "", fallbackMediaType = "" } = {}) => {
+  const normalizedMime = typeof mimeType === "string" ? mimeType.split(";")[0].trim().toLowerCase() : "";
+  const directMatch = normalizedMime.match(mediaTypePattern);
+
+  if (directMatch) {
+    return {
+      mediaKind: directMatch[1],
+      mimeType: normalizedMime,
+    };
+  }
+
+  const extension = typeof fileName === "string"
+    ? fileName.split("?")[0].split("#")[0].split(".").pop()?.toLowerCase()
+    : "";
+  const inferredMime = extension ? extensionMimeMap[extension] : "";
+  const inferredMatch = inferredMime.match(mediaTypePattern);
+
+  if (inferredMatch) {
+    return {
+      mediaKind: inferredMatch[1],
+      mimeType: inferredMime,
+    };
+  }
+
+  if (fallbackMediaType === "image") {
+    return {
+      mediaKind: "image",
+      mimeType: "image/jpeg",
+    };
+  }
+
+  if (fallbackMediaType === "video") {
+    return {
+      mediaKind: "video",
+      mimeType: "video/mp4",
+    };
+  }
+
+  return {
+    mediaKind: "",
+    mimeType: normalizedMime,
+  };
+};
 
 export const getPublicOrigin = (req) => {
   if (process.env.SERVER_URL) return process.env.SERVER_URL.replace(/\/$/, "");
@@ -112,16 +176,21 @@ export const isStoredMediaUrl = (value) =>
     value.startsWith("/uploads/") ||
     value.startsWith("/api/media/"));
 
-export const saveBinaryMedia = async (buffer, mimeType, folder, req) => {
-  const match = typeof mimeType === "string" ? mimeType.match(mediaTypePattern) : null;
-  if (!Buffer.isBuffer(buffer) || buffer.length === 0 || !match) return "";
+export const saveBinaryMedia = async (buffer, mimeType, folder, req, options = {}) => {
+  const mediaInfo = inferMediaInfo({
+    mimeType,
+    fileName: options.fileName,
+    fallbackMediaType: options.mediaType,
+  });
+  const match = mediaInfo.mimeType.match(mediaTypePattern);
+  if (!Buffer.isBuffer(buffer) || buffer.length === 0 || !match || !mediaInfo.mediaKind) return "";
 
   const [, mediaKind, rawExtension] = match;
   const extension = extensionMap[rawExtension.toLowerCase()] || rawExtension.toLowerCase();
   const safeFolder = getSafeFolder(folder);
 
   if (shouldStoreInDatabase(safeFolder, req, mediaKind)) {
-    return saveBufferToDatabase(buffer, mimeType, safeFolder, mediaKind, extension);
+    return saveBufferToDatabase(buffer, mediaInfo.mimeType, safeFolder, mediaKind, extension);
   }
 
   const directory = path.join(uploadsRoot, safeFolder);

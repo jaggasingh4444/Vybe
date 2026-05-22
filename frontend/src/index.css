@@ -466,6 +466,31 @@ body {
   }
 }
 
+@keyframes vybe-feed-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes vybe-soft-pulse {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: translateX(-22%);
+  }
+  50% {
+    opacity: 0.72;
+    transform: translateX(44%);
+  }
+}
+
 @keyframes vybe-float {
   0%,
   100% {
@@ -642,7 +667,45 @@ body.vybe-theme-active:not(.vybe-light) .vybe-app-shell {
 .vybe-app-shell article {
   border-radius: 22px !important;
   background: var(--vybe-surface-strong) !important;
-  animation: vybe-fade-up 0.36s ease both;
+  animation: vybe-feed-card-in 0.44s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.vybe-feed-card {
+  position: relative;
+}
+
+.vybe-feed-card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    linear-gradient(110deg, transparent 0%, rgba(124, 92, 255, 0.16) 38%, rgba(6, 182, 212, 0.1) 50%, transparent 66%);
+  opacity: 0;
+  transform: translateX(-28%);
+}
+
+.vybe-feed-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.vybe-feed-card:hover::before {
+  opacity: 1;
+  animation: vybe-soft-pulse 1.4s ease-in-out;
+}
+
+.vybe-feed-card button svg {
+  transition:
+    transform 0.18s ease,
+    filter 0.18s ease;
+}
+
+.vybe-feed-card button:not(:disabled):hover svg {
+  transform: translateY(-1px) scale(1.08);
+  filter: drop-shadow(0 6px 14px rgba(101, 87, 255, 0.22));
 }
 
 .vybe-app-shell article:hover {

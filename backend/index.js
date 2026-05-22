@@ -38,7 +38,7 @@ const corsOptions = {
   },
   credentials: true,
   methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Media-Type"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Media-Type", "X-Media-Name"],
 };
 
 app.use(cors(corsOptions));

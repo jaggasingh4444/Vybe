@@ -36,6 +36,23 @@ const getReplyKey = (item, commentId) => `${getContentKey(item)}-${commentId}-re
 const isTextPost = (item) =>
   item?.type === "post" && (item?.mediaType === "text" || !item?.media);
 const getContentTypeLabel = (item) => (item?.type === "reel" ? "reel" : "post");
+const imageExtensions = new Set(["jpg", "jpeg", "png", "gif", "webp", "heic", "heif", "avif", "svg"]);
+const videoExtensions = new Set(["mp4", "mov", "m4v", "webm", "avi", "ogv", "ogg", "3gp"]);
+const getFileExtension = (file) => file?.name?.split("?")[0]?.split("#")[0]?.split(".").pop()?.toLowerCase() || "";
+const getFileMediaType = (file) => {
+  if (file?.type?.startsWith("video/")) return "video";
+  if (file?.type?.startsWith("image/")) return "image";
+
+  const extension = getFileExtension(file);
+  if (videoExtensions.has(extension)) return "video";
+  if (imageExtensions.has(extension)) return "image";
+
+  return "";
+};
+const getUploadMimeType = (file, mediaType) => {
+  if (file?.type?.startsWith("image/") || file?.type?.startsWith("video/")) return file.type;
+  return mediaType === "video" ? "video/mp4" : "image/jpeg";
+};
 const getNotificationContentLabel = (notification) => {
   if (notification?.contentType === "reel") return "reel";
   if (notification?.contentType === "story") return "story";
@@ -61,7 +78,7 @@ const getNotificationActionLabel = (notification) => {
   }
 };
 const getMediaSizeLimit = (file) =>
-  file?.type?.startsWith("video/") ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
+  getFileMediaType(file) === "video" ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
 const formatMediaSize = (bytes) => `${Math.round(bytes / ONE_MB)} MB`;
 const sharedContentToFeedItem = (sharedContent) => {
   if (!sharedContent?.contentId) return null;
@@ -402,31 +419,32 @@ const uploadJsonWithProgress = ({ url, payload, onProgress, errorMessage = "Uplo
     xhr.send(JSON.stringify(payload));
   });
 
-const uploadContentWithFile = ({ url, file, caption, mediaType, onProgress }) =>
+const uploadRawContentMedia = ({ file, mediaType, onProgress }) =>
   new Promise((resolve, reject) => {
     if (!file) {
       reject(new Error("Choose a media file."));
       return;
     }
 
-    const formData = new FormData();
-    formData.append("caption", caption || "");
-    formData.append("mediaType", mediaType || (file.type.startsWith("video/") ? "video" : "image"));
-    formData.append("media", file);
+    const resolvedMediaType = mediaType || getFileMediaType(file);
 
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", url, true);
+    xhr.open("POST", apiUrl("/api/content/uploads"), true);
     xhr.withCredentials = true;
     xhr.timeout = CONTENT_MEDIA_UPLOAD_TIMEOUT_MS;
 
-    getTabAuthHeaders().forEach((value, key) => {
+    getTabAuthHeaders({
+      "Content-Type": getUploadMimeType(file, resolvedMediaType),
+      "X-Media-Type": resolvedMediaType,
+      "X-Media-Name": encodeURIComponent(file.name || "media"),
+    }).forEach((value, key) => {
       xhr.setRequestHeader(key, value);
     });
 
     xhr.upload.onprogress = (event) => {
       if (!event.lengthComputable) return;
 
-      const progress = Math.max(1, Math.min(100, Math.round((event.loaded / event.total) * 100)));
+      const progress = Math.max(1, Math.min(92, Math.round((event.loaded / event.total) * 92)));
       onProgress?.(progress);
     };
 
@@ -440,19 +458,43 @@ const uploadContentWithFile = ({ url, file, caption, mediaType, onProgress }) =>
       }
 
       if (xhr.status < 200 || xhr.status >= 300) {
-        reject(new Error(data.message || "Upload failed"));
+        reject(new Error(data.message || "Media upload failed"));
         return;
       }
 
-      onProgress?.(100);
+      onProgress?.(94);
       resolve(data);
     };
 
-    xhr.onerror = () => reject(new Error("Upload failed"));
-    xhr.ontimeout = () => reject(new Error("Upload is taking too long"));
-    xhr.onabort = () => reject(new Error("Upload cancelled"));
-    xhr.send(formData);
+    xhr.onerror = () => reject(new Error("Media upload failed"));
+    xhr.ontimeout = () => reject(new Error("Media upload is taking too long"));
+    xhr.onabort = () => reject(new Error("Media upload cancelled"));
+    xhr.send(file);
   });
+
+const uploadContentWithFile = async ({ url, file, caption, mediaType, onProgress }) => {
+  if (!file) {
+    throw new Error("Choose a media file.");
+  }
+
+  const resolvedMediaType = mediaType || getFileMediaType(file);
+  const uploadedMedia = await uploadRawContentMedia({
+    file,
+    mediaType: resolvedMediaType,
+    onProgress,
+  });
+
+  return uploadJsonWithProgress({
+    url,
+    payload: {
+      caption: caption || "",
+      media: uploadedMedia.media,
+      mediaType: uploadedMedia.mediaType || resolvedMediaType,
+    },
+    onProgress: (progress) => onProgress?.(Math.max(94, progress)),
+    errorMessage: "Upload failed",
+  });
+};
 
 const uploadChatAttachment = (attachment) =>
   new Promise((resolve, reject) => {
@@ -466,8 +508,12 @@ const uploadChatAttachment = (attachment) =>
     xhr.withCredentials = true;
     xhr.timeout = CHAT_MEDIA_UPLOAD_TIMEOUT_MS;
 
+    const mediaType = attachment.mediaType || getFileMediaType(attachment.file);
+
     getTabAuthHeaders({
-      "Content-Type": attachment.file.type || "application/octet-stream",
+      "Content-Type": getUploadMimeType(attachment.file, mediaType),
+      "X-Media-Type": mediaType,
+      "X-Media-Name": encodeURIComponent(attachment.file.name || "chat-media"),
     }).forEach((value, key) => {
       xhr.setRequestHeader(key, value);
     });
@@ -884,7 +930,7 @@ function Feed() {
 
     if (files.length === 0) return;
 
-    if (files.some((file) => !file.type.startsWith("image/") && !file.type.startsWith("video/"))) {
+    if (files.some((file) => !getFileMediaType(file))) {
       setMobileChatStatus("Choose an image or video.");
       return;
     }
@@ -892,7 +938,7 @@ function Feed() {
     const oversizedFile = files.find((file) => file.size > getMediaSizeLimit(file));
     if (oversizedFile) {
       setMobileChatStatus(
-        `Each ${oversizedFile.type.startsWith("video/") ? "video" : "image"} must be under ${formatMediaSize(getMediaSizeLimit(oversizedFile))}.`
+        `Each ${getFileMediaType(oversizedFile) === "video" ? "video" : "image"} must be under ${formatMediaSize(getMediaSizeLimit(oversizedFile))}.`
       );
       return;
     }
@@ -906,7 +952,7 @@ function Feed() {
       const mediaItems = files.map((file) => ({
         file,
         media: URL.createObjectURL(file),
-        mediaType: file.type.startsWith("video/") ? "video" : "image",
+        mediaType: getFileMediaType(file),
         name: file.name,
       }));
       setMobileChatEmojiOpen(false);
@@ -1015,7 +1061,7 @@ function Feed() {
 
   const selectedMediaType = useMemo(() => {
     if (!selectedFile) return "";
-    return selectedFile.type.startsWith("video/") ? "video" : "image";
+    return getFileMediaType(selectedFile);
   }, [selectedFile]);
 
   const closeStoryViewer = useCallback(() => {
@@ -1782,17 +1828,19 @@ function Feed() {
       return;
     }
 
-    if (mode === "reel" && !file.type.startsWith("video/")) {
+    const mediaType = getFileMediaType(file);
+
+    if (mode === "reel" && mediaType !== "video") {
       setMessage("Reels must be video files.");
       return;
     }
 
-    if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
+    if (!mediaType) {
       setMessage("Please choose an image or video.");
       return;
     }
 
-    if (file.type.startsWith("video/") && mode === "post") {
+    if (mediaType === "video" && mode === "post") {
       setMode("reel");
     }
 
@@ -1812,7 +1860,9 @@ function Feed() {
       return;
     }
 
-    if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
+    const mediaType = getFileMediaType(file);
+
+    if (!mediaType) {
       setMessage("Stories must be an image or video.");
       return;
     }
@@ -1821,8 +1871,6 @@ function Feed() {
     setStoryUploadProgress(4);
 
     try {
-      const mediaType = file.type.startsWith("video/") ? "video" : "image";
-
       const data = await uploadContentWithFile({
         url: apiUrl("/api/content/stories"),
         file,
@@ -5248,14 +5296,14 @@ function Feed() {
             const renderAsTextPost = isTextPost(item) || brokenMediaKeys.has(contentKey);
 
             return (
-            <article
-              key={`${item.type}-${item._id}`}
-              className={
-                isMobileReelFeed
-                  ? "min-h-[calc(100vh-9rem)] snap-start border-b border-gray-900 bg-black overflow-hidden flex flex-col"
-                  : "border border-gray-900 rounded-lg overflow-hidden bg-black"
-              }
-            >
+	            <article
+	              key={`${item.type}-${item._id}`}
+	              className={
+	                isMobileReelFeed
+	                  ? "vybe-feed-card min-h-[calc(100vh-9rem)] snap-start border-b border-gray-900 bg-black overflow-hidden flex flex-col"
+	                  : "vybe-feed-card border border-gray-900 rounded-lg overflow-hidden bg-black"
+	              }
+	            >
               <div className="flex items-center justify-between px-4 py-3">
                 <div className="flex min-w-0 flex-1 items-center gap-3">
                   <button
@@ -5433,7 +5481,7 @@ function Feed() {
             );
           })
         ) : (
-          <article className="border border-gray-900 rounded-lg overflow-hidden bg-black">
+	          <article className="vybe-feed-card border border-gray-900 rounded-lg overflow-hidden bg-black">
             <div className="aspect-square bg-[#101010] flex items-center justify-center px-6 text-center">
               <div>
                 <p className="text-white text-lg font-semibold">

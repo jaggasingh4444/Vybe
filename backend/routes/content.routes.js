@@ -1,7 +1,7 @@
 import express from "express";
 import { uploadBufferToS3 } from "../config/s3.js";
 import upload from "../middleware/upload.js";
-import { saveBinaryMedia } from "../utils/mediaStorage.js";
+import { inferMediaInfo, saveBinaryMedia } from "../utils/mediaStorage.js";
 import {
   contentEvents,
   createStory,
@@ -33,11 +33,11 @@ const uploadMediaToS3 = async (req, res) => {
       return res.status(400).json({ message: "Media file is required" });
     }
 
-    const mediaType = req.file.mimetype?.startsWith("video/")
-      ? "video"
-      : req.file.mimetype?.startsWith("image/")
-        ? "image"
-        : "";
+    const mediaInfo = inferMediaInfo({
+      mimeType: req.file.mimetype,
+      fileName: req.file.originalname,
+    });
+    const mediaType = mediaInfo.mediaKind;
 
     if (!mediaType) {
       return res.status(400).json({ message: "Upload must be an image or video" });
@@ -52,7 +52,10 @@ const uploadMediaToS3 = async (req, res) => {
       });
     }
 
-    const media = await saveBinaryMedia(req.file.buffer, req.file.mimetype, "content", req);
+    const media = await saveBinaryMedia(req.file.buffer, mediaInfo.mimeType, "content", req, {
+      fileName: req.file.originalname,
+      mediaType,
+    });
     if (!media) {
       return res.status(400).json({ message: "Media upload failed" });
     }

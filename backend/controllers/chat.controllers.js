@@ -3,7 +3,13 @@ import Message from "../models/message.model.js";
 import User from "../models/user.model.js";
 import Post from "../models/post.model.js";
 import Loop from "../models/loop.model.js";
-import { isDataUrl, isStoredMediaUrl, saveBinaryMedia, saveDataUrlMedia } from "../utils/mediaStorage.js";
+import {
+  inferMediaInfo,
+  isDataUrl,
+  isStoredMediaUrl,
+  saveBinaryMedia,
+  saveDataUrlMedia,
+} from "../utils/mediaStorage.js";
 
 const chatClients = new Map();
 
@@ -660,11 +666,12 @@ export const sendMessage = async (req, res) => {
 export const uploadChatMedia = async (req, res) => {
   try {
     const contentType = req.get("content-type")?.split(";")[0]?.trim() || "";
-    const mediaType = contentType.startsWith("video/")
-      ? "video"
-      : contentType.startsWith("image/")
-        ? "image"
-        : "";
+    const mediaInfo = inferMediaInfo({
+      mimeType: contentType,
+      fileName: req.get("x-media-name") || "",
+      fallbackMediaType: req.get("x-media-type") || "",
+    });
+    const mediaType = mediaInfo.mediaKind;
 
     if (!mediaType) {
       return res.status(400).json({ message: "Chat upload must be an image or video" });
@@ -674,7 +681,10 @@ export const uploadChatMedia = async (req, res) => {
       return res.status(400).json({ message: "Chat media is empty" });
     }
 
-    const media = await saveBinaryMedia(req.body, contentType, "chat", req);
+    const media = await saveBinaryMedia(req.body, mediaInfo.mimeType, "chat", req, {
+      fileName: req.get("x-media-name") || "",
+      mediaType,
+    });
     if (!media) {
       return res.status(400).json({ message: "Chat media upload failed" });
     }
