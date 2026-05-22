@@ -24,7 +24,7 @@ function SignIn() {
 
   const [showPassword, setShowPassword] = useState(false);
 
-  const [userName, setUserName] = useState("");
+  const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -64,7 +64,7 @@ function SignIn() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userName, password }),
+        body: JSON.stringify({ login: login.trim(), password }),
       });
 
       const data = await res.json();
@@ -112,7 +112,7 @@ function SignIn() {
             onSubmit={handleSubmit}
             className="w-full flex flex-col items-center gap-5 mt-8"
           >
-            {/* USERNAME */}
+            {/* USERNAME OR EMAIL */}
             <div
               className="relative w-[90%] h-[55px] border-2 border-black rounded-2xl px-4 flex items-center"
               onClick={() =>
@@ -122,27 +122,28 @@ function SignIn() {
               <label
                 className={`absolute left-4 bg-white px-1 text-gray-700 transition-all
                   ${
-                    inputClicked.userName || userName
+                    inputClicked.userName || login
                       ? "top-[-12px] text-sm"
                       : "top-[15px]"
                   }`}
               >
-                Enter Username
+                Enter Username or Email
               </label>
 
               <input
                 id="userName"
                 type="text"
-                value={userName}
-                onChange={(e) => setUserName(e.target.value)}
+                value={login}
+                onChange={(e) => setLogin(e.target.value)}
                 onFocus={() =>
                   setInputClicked({ ...inputClicked, userName: true })
                 }
                 onBlur={() =>
-                  !userName &&
+                  !login &&
                   setInputClicked({ ...inputClicked, userName: false })
                 }
                 className="w-full h-full outline-none bg-transparent text-black"
+                autoComplete="username"
                 required
               />
             </div>

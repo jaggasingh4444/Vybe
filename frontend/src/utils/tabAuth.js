@@ -1,22 +1,33 @@
 import { API_BASE_URL } from "../config/api";
 
 const TAB_AUTH_TOKEN_KEY = "vybe-tab-auth-token";
+const PERSISTENT_AUTH_TOKEN_KEY = "vybe-auth-token";
 const TAB_LOGGED_OUT_KEY = "vybe-tab-logged-out";
 
 export const getTabAuthToken = () => {
   if (typeof window === "undefined") return "";
-  return window.sessionStorage.getItem(TAB_AUTH_TOKEN_KEY) || "";
+  if (window.sessionStorage.getItem(TAB_LOGGED_OUT_KEY) === "1") return "";
+
+  return (
+    window.sessionStorage.getItem(TAB_AUTH_TOKEN_KEY) ||
+    window.localStorage.getItem(PERSISTENT_AUTH_TOKEN_KEY) ||
+    ""
+  );
 };
 
 export const setTabAuthToken = (token) => {
   if (typeof window === "undefined" || !token) return;
   window.sessionStorage.removeItem(TAB_LOGGED_OUT_KEY);
   window.sessionStorage.setItem(TAB_AUTH_TOKEN_KEY, token);
+  window.localStorage.setItem(PERSISTENT_AUTH_TOKEN_KEY, token);
 };
 
-export const clearTabAuthToken = () => {
+export const clearTabAuthToken = ({ persistent = true } = {}) => {
   if (typeof window === "undefined") return;
   window.sessionStorage.removeItem(TAB_AUTH_TOKEN_KEY);
+  if (persistent) {
+    window.localStorage.removeItem(PERSISTENT_AUTH_TOKEN_KEY);
+  }
 };
 
 export const markTabLoggedOut = () => {

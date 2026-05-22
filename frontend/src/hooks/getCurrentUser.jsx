@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { setUserData, authChecked } from "../redux/userSlice";
 import { apiUrl } from "../config/api";
-import { clearTabAuthToken, isTabLoggedOut, setTabAuthToken } from "../utils/tabAuth";
+import { clearTabAuthToken, getTabAuthHeaders, isTabLoggedOut, setTabAuthToken } from "../utils/tabAuth";
 
 const useGetCurrentUser = () => {
   const dispatch = useDispatch();
@@ -20,6 +20,7 @@ const useGetCurrentUser = () => {
       try {
         const res = await fetch(apiUrl("/api/users/current"), {
           credentials: "include",
+          headers: getTabAuthHeaders(),
         });
 
         if (res.ok) {
@@ -27,12 +28,14 @@ const useGetCurrentUser = () => {
           const { authToken, ...safeUser } = data;
           setTabAuthToken(authToken);
           dispatch(setUserData(safeUser));
-        } else {
+        } else if (res.status === 401) {
           clearTabAuthToken();
+          dispatch(setUserData(null));
+        } else {
           dispatch(setUserData(null));
         }
       } catch {
-        clearTabAuthToken();
+        clearTabAuthToken({ persistent: false });
         dispatch(setUserData(null));
       } finally {
         dispatch(authChecked()); // 🔥 ALWAYS mark auth checked

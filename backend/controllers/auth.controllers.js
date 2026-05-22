@@ -7,7 +7,19 @@ import { toSafeUser } from "../utils/admin.js"
 
 const OTP_EXPIRY_MS = 5 * 60 * 1000;
 const VERIFIED_SIGNUP_EXPIRY_MS = 10 * 60 * 1000;
+const AUTH_COOKIE_MAX_AGE_MS = 10 * 365 * 24 * 60 * 60 * 1000;
 const normalizeEmail = (email = "") => email.trim().toLowerCase();
+const getAuthCookieOptions = () => {
+    const isProduction = process.env.NODE_ENV === "production";
+
+    return {
+        httpOnly:true,
+        maxAge:AUTH_COOKIE_MAX_AGE_MS,
+        secure:isProduction,
+        sameSite:isProduction ? "none" : "lax",
+        path:"/"
+    }
+};
 const EMAIL_PATTERN = /^[A-Z0-9.!#$%&'*+/=?^_`{|}~-]+@(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,}$/i;
 const COMMON_EMAIL_DOMAIN_TYPOS = new Set([
     "gamil.com",
@@ -104,13 +116,7 @@ export const signUp=async (req, res)=>{
 
         const token = await genToken(user._id)
 
-        res.cookie("token",token,{
-            httpOnly:true,
-            maxAge:10*365*24*60*60*1000,
-            secure:false,
-            sameSite:"lax",
-            path:"/"
-        })
+        res.cookie("token",token,getAuthCookieOptions())
         const safeUser = toSafeUser(user)
         safeUser.authToken = token
 
@@ -210,12 +216,19 @@ export const verifySignupOtp=async (req, res)=>{
 
 export const signIn = async (req, res) => {
   try {
-    const { userName, password } = req.body;
-    if (!userName || !password) {
-      return res.status(400).json({ message: "Username and password are required" });
+    const { password } = req.body;
+    const login = (req.body.login || req.body.identifier || req.body.userName || req.body.email || "").trim();
+    if (!login || !password) {
+      return res.status(400).json({ message: "Username/email and password are required" });
     }
 
-    const user = await User.findOne({ userName });
+    const normalizedEmail = normalizeEmail(login);
+    const user = await User.findOne({
+      $or: [
+        { userName: login },
+        { email: normalizedEmail },
+      ],
+    });
     if (!user) {
       return res.status(400).json({ message: "User not found!" });
     }
@@ -227,13 +240,7 @@ export const signIn = async (req, res) => {
 
     const token = await genToken(user._id);
 
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: false, // true in production (HTTPS)
-      sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      path: "/",
-    });
+    res.cookie("token", token, getAuthCookieOptions());
 
     // ❌ never send password
     const safeUser = toSafeUser(user);
@@ -252,12 +259,9 @@ export const signIn = async (req, res) => {
 
 export const signOut = async(req, res)=>{
     try {
-        res.clearCookie("token", {
-        httpOnly: true,
-        secure: false,
-        sameSite: "lax",
-        path: "/"
-        });
+        const cookieOptions = getAuthCookieOptions();
+        delete cookieOptions.maxAge;
+        res.clearCookie("token", cookieOptions);
         return res.status(200).json({message:"Sign out successfully"})
     } catch (error) {
         return res.status(500).json({message:`signout error ${error}`})          
