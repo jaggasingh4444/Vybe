@@ -773,6 +773,56 @@ body.vybe-theme-active.vybe-light .vybe-app-shell .vybe-mobile-bottom-nav {
   -webkit-box-orient: vertical;
 }
 
+.vybe-mobile-chat-header,
+.vybe-mobile-chat-composer {
+  background: rgba(9, 12, 31, 0.96) !important;
+  border-color: rgba(129, 140, 248, 0.18) !important;
+  backdrop-filter: blur(18px) saturate(145%);
+}
+
+.vybe-mobile-chat-header {
+  border-bottom: 1px solid rgba(129, 140, 248, 0.14);
+}
+
+.vybe-mobile-chat-composer {
+  border-top: 1px solid rgba(129, 140, 248, 0.14);
+}
+
+.vybe-mobile-chat-bubble-out {
+  background: linear-gradient(135deg, #6557ff, #8b5cf6);
+  box-shadow: 0 10px 24px rgba(101, 87, 255, 0.18);
+}
+
+.vybe-mobile-chat-bubble-out.bg-red-600 {
+  background: #dc2626 !important;
+}
+
+.vybe-mobile-chat-bubble-in,
+.vybe-mobile-chat-input,
+.vybe-mobile-chat-reply {
+  background: rgba(22, 27, 56, 0.92);
+  border-color: rgba(129, 140, 248, 0.14);
+}
+
+.vybe-mobile-chat-input {
+  border: 1px solid rgba(129, 140, 248, 0.12);
+}
+
+.vybe-mobile-ai-primary,
+.vybe-mobile-send-button {
+  background: linear-gradient(135deg, #6557ff, #8b5cf6);
+  color: #ffffff;
+}
+
+.vybe-mobile-ai-chip {
+  background: rgba(22, 27, 56, 0.92);
+  color: #f4f6ff;
+}
+
+.vybe-mobile-send-button:disabled {
+  opacity: 0.58;
+}
+
 body.vybe-theme-active.vybe-light .vybe-notification-panel,
 body.vybe-theme-active.vybe-light .vybe-notification-panel > div:first-child {
   background: rgba(255, 255, 255, 0.98) !important;

@@ -4068,9 +4068,9 @@ function Feed() {
     : { paddingBottom: mobileBottomNavHeight };
   const feedOverlayOpen = createOpen || mobileSettingsOpen || shareItem;
   const mobileChatWallpaperStyle = {
-    backgroundColor: "#0b141a",
+    backgroundColor: "#090c1f",
     backgroundImage:
-      "radial-gradient(circle at 18px 18px, rgba(255,255,255,0.045) 1.2px, transparent 1.3px), radial-gradient(circle at 58px 42px, rgba(0,168,132,0.06) 1.2px, transparent 1.4px), linear-gradient(135deg, rgba(255,255,255,0.025) 8%, transparent 8%, transparent 50%, rgba(255,255,255,0.02) 50%, rgba(255,255,255,0.02) 58%, transparent 58%)",
+      "radial-gradient(circle at 18px 18px, rgba(124,92,255,0.12) 1.2px, transparent 1.3px), radial-gradient(circle at 58px 42px, rgba(6,182,212,0.08) 1.2px, transparent 1.4px), linear-gradient(135deg, rgba(255,255,255,0.025) 8%, transparent 8%, transparent 50%, rgba(124,92,255,0.035) 50%, rgba(124,92,255,0.035) 58%, transparent 58%)",
     backgroundSize: "84px 84px, 96px 96px, 72px 72px",
   };
   const showChatMediaStep = (direction) => {
@@ -4781,7 +4781,7 @@ function Feed() {
                 className="flex h-full min-h-0 flex-col overflow-hidden text-white"
                 style={mobileChatWallpaperStyle}
               >
-                <div className="relative h-[70px] shrink-0 px-3 flex items-center justify-between bg-[#0b141a]/95 shadow-lg shadow-black/20">
+                <div className="vybe-mobile-chat-header relative h-[70px] shrink-0 px-3 flex items-center justify-between shadow-lg shadow-black/20">
                   <div className="flex min-w-0 items-center gap-2.5">
                     <button
                       type="button"
@@ -4810,7 +4810,7 @@ function Feed() {
                         }}
                       />
                       {isUserOnline(selectedMobileChat) ? (
-                        <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-[#25d366] border-2 border-[#0b141a]" />
+                        <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-[#22c55e] border-2 border-[#090c1f]" />
                       ) : null}
                     </span>
                     <div className="min-w-0">
@@ -4840,7 +4840,7 @@ function Feed() {
                   </div>
 
                   {mobileConversationMenuOpen ? (
-                    <div className="absolute right-3 top-14 z-10 w-52 rounded-xl border border-white/10 bg-[#111b21] p-1 shadow-2xl">
+                    <div className="absolute right-3 top-14 z-10 w-52 rounded-xl border border-white/10 bg-[#12162d] p-1 shadow-2xl">
                       <button
                         type="button"
                         onClick={() => deleteMobileConversation(selectedMobileChat._id)}
@@ -4883,10 +4883,10 @@ function Feed() {
                                   chatMessage.pending ? "opacity-70" : ""
                                 }`
                               : mine
-                                ? `self-end bg-[#005c4b] text-white rounded-br-md ${
+                                ? `vybe-mobile-chat-bubble-out self-end text-white rounded-br-md ${
                                     chatMessage.failed ? "bg-red-600" : chatMessage.pending ? "opacity-70" : ""
                                   }`
-                                : "self-start bg-[#202c33] text-gray-100 rounded-bl-md"
+                                : "vybe-mobile-chat-bubble-in self-start text-gray-100 rounded-bl-md"
                           } ${mobileMessageMenuId === chatMessage._id ? "ring-1 ring-white/20" : ""}`}
                         >
                           {renderChatReplyPreview(chatMessage)}
@@ -4910,7 +4910,7 @@ function Feed() {
                     </div>
                   ) : null}
                   {selectedMobileChatTyping ? (
-                    <div className="self-start rounded-2xl rounded-bl-sm bg-[#202c33] px-3 py-2 text-xs font-semibold text-[#d1d7db]">
+                    <div className="vybe-mobile-chat-bubble-in self-start rounded-2xl rounded-bl-sm px-3 py-2 text-xs font-semibold text-[#d1d7db]">
                       Typing...
                     </div>
                   ) : null}
@@ -4918,15 +4918,15 @@ function Feed() {
 
                 <form
                   onSubmit={sendMobileMessage}
-                  className="relative shrink-0 bg-[#0b141a]/95 px-3 py-2 pb-[max(0.65rem,env(safe-area-inset-bottom))]"
+                  className="vybe-mobile-chat-composer relative shrink-0 px-3 py-2 pb-[max(0.65rem,env(safe-area-inset-bottom))]"
                 >
                   {mobileReplyToMessage ? (
-                    <div className="mb-2 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#111b21] px-3 py-2">
-                      <div className="min-w-0 border-l-2 border-[#00a884] pl-2">
+                    <div className="vybe-mobile-chat-reply mb-2 flex items-center justify-between gap-3 rounded-2xl border border-white/10 px-3 py-2">
+                      <div className="min-w-0 border-l-2 border-[#7c5cff] pl-2">
                         <p className="text-xs font-semibold text-white">
                           Replying to {getMessageSenderId(mobileReplyToMessage) === userData?._id ? "your message" : mobileReplyToMessage.sender?.userName || "user"}
                         </p>
-                        <p className="truncate text-xs text-[#8696a0]">
+                        <p className="truncate text-xs text-[#9ca3c7]">
                           {getReplyPreviewText(createMessageReplySnapshot(mobileReplyToMessage))}
                         </p>
                       </div>
@@ -4943,7 +4943,7 @@ function Feed() {
                   {mobileMessageMedia.length > 0 ? (
                     <div className="mb-2 flex gap-2 overflow-x-auto pb-1">
                       {mobileMessageMedia.map((item, index) => (
-                        <div key={`${item.name}-${index}`} className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-[#202c33]">
+                        <div key={`${item.name}-${index}`} className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-[#171b38]">
                           {item.mediaType === "video" ? (
                             <video src={mediaUrl(item.media)} muted playsInline preload="metadata" className="h-full w-full object-cover" />
                           ) : (
@@ -4966,7 +4966,7 @@ function Feed() {
                       type="button"
                       onClick={generateAiReplies}
                       disabled={aiReplyLoading}
-                      className="h-8 shrink-0 rounded-full bg-[#00a884] px-3 text-xs font-semibold text-[#07100f] disabled:opacity-60"
+                      className="vybe-mobile-ai-primary h-8 shrink-0 rounded-full px-3 text-xs font-semibold disabled:opacity-60"
                     >
                       {aiReplyLoading ? "Thinking..." : "AI replies"}
                     </button>
@@ -4979,14 +4979,14 @@ function Feed() {
                           setAiReplySuggestions([]);
                           focusMobileMessageInput();
                         }}
-                        className="h-8 shrink-0 rounded-full bg-[#202c33] px-3 text-xs font-semibold text-[#e9edef] active:bg-white/10"
+                        className="vybe-mobile-ai-chip h-8 shrink-0 rounded-full px-3 text-xs font-semibold active:bg-white/10"
                       >
                         {suggestion}
                       </button>
                     ))}
                   </div>
                   {mobileChatEmojiOpen ? (
-                    <div className="absolute bottom-16 left-3 z-10 grid grid-cols-6 gap-1 rounded-2xl border border-white/10 bg-[#111b21] p-2 shadow-2xl">
+                    <div className="absolute bottom-16 left-3 z-10 grid grid-cols-6 gap-1 rounded-2xl border border-white/10 bg-[#12162d] p-2 shadow-2xl">
                       {EMOJI_OPTIONS.map((emoji) => (
                         <button
                           key={emoji}
@@ -5000,11 +5000,11 @@ function Feed() {
                     </div>
                   ) : null}
                   <div className="flex items-center gap-1.5">
-                    <div className="min-w-0 flex flex-1 items-center gap-1 rounded-full bg-[#202c33] px-2 py-1.5 shadow-lg shadow-black/20">
+                    <div className="vybe-mobile-chat-input min-w-0 flex flex-1 items-center gap-1 rounded-full px-2 py-1.5 shadow-lg shadow-black/20">
                   <button
                     type="button"
                     onClick={() => setMobileChatEmojiOpen((open) => !open)}
-                    className="w-9 h-9 shrink-0 rounded-full text-[#aebac1] flex items-center justify-center active:bg-white/10"
+                    className="w-9 h-9 shrink-0 rounded-full text-[#b8bee8] flex items-center justify-center active:bg-white/10"
                     aria-label="Add emoji"
                   >
                     <FiSmile />
@@ -5020,7 +5020,7 @@ function Feed() {
                   <button
                     type="button"
                     onClick={() => mobileMessageMediaInputRef.current?.click()}
-                    className="w-9 h-9 shrink-0 rounded-full text-[#aebac1] flex items-center justify-center active:bg-white/10"
+                    className="w-9 h-9 shrink-0 rounded-full text-[#b8bee8] flex items-center justify-center active:bg-white/10"
                     aria-label="Send photo or video"
                   >
                     <FiImage />
@@ -5028,7 +5028,7 @@ function Feed() {
                   <button
                     type="button"
                     onClick={() => mobileMessageMediaInputRef.current?.click()}
-                    className="w-9 h-9 shrink-0 rounded-full text-[#aebac1] flex items-center justify-center active:bg-white/10"
+                    className="w-9 h-9 shrink-0 rounded-full text-[#b8bee8] flex items-center justify-center active:bg-white/10"
                     aria-label="Open camera media"
                   >
                     <FiCamera />
@@ -5061,7 +5061,7 @@ function Feed() {
                       }, 160);
                     }}
                     placeholder="Message..."
-                    className="min-w-0 flex-1 h-10 bg-transparent text-[16px] text-[#e9edef] px-1 outline-none placeholder:text-[#8696a0]"
+                    className="min-w-0 flex-1 h-10 bg-transparent text-[16px] text-[#f4f6ff] px-1 outline-none placeholder:text-[#858caf]"
                     maxLength={1000}
                   />
                     </div>
@@ -5071,8 +5071,8 @@ function Feed() {
                     onClick={handleMobileSendClick}
                     className={`w-12 h-12 shrink-0 rounded-full flex items-center justify-center text-xl shadow-lg shadow-black/20 transition active:scale-95 disabled:opacity-70 ${
                       mobileMessageText.trim() || mobileMessageMedia.length > 0
-                        ? "bg-[#00a884] text-[#07100f]"
-                        : "bg-[#00a884] text-[#07100f]"
+                        ? "vybe-mobile-send-button"
+                        : "vybe-mobile-send-button"
                     }`}
                     disabled={!mobileMessageText.trim() && mobileMessageMedia.length === 0}
                     aria-label="Send message"
