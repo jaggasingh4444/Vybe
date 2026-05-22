@@ -732,6 +732,50 @@ body.vybe-theme-active.vybe-light .vybe-app-shell .vybe-mobile-bottom-nav {
   animation: vybe-scale-in 0.18s ease both;
 }
 
+.vybe-modal-host-open {
+  backdrop-filter: none !important;
+}
+
+.vybe-create-overlay,
+.vybe-settings-overlay {
+  background: rgba(2, 6, 23, 0.78) !important;
+  backdrop-filter: blur(18px) saturate(140%);
+}
+
+.vybe-create-sheet,
+.vybe-settings-sheet {
+  border-color: var(--vybe-border) !important;
+  background: rgba(9, 12, 28, 0.98) !important;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.42);
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.vybe-create-sheet > div:first-child,
+.vybe-settings-sheet > div:first-child {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: rgba(9, 12, 28, 0.98);
+  backdrop-filter: blur(14px) saturate(140%);
+}
+
+body.vybe-theme-active.vybe-light .vybe-create-overlay,
+body.vybe-theme-active.vybe-light .vybe-settings-overlay {
+  background: rgba(15, 23, 42, 0.34) !important;
+}
+
+body.vybe-theme-active.vybe-light .vybe-create-sheet,
+body.vybe-theme-active.vybe-light .vybe-settings-sheet {
+  background: rgba(255, 255, 255, 0.98) !important;
+  box-shadow: 0 30px 90px rgba(15, 23, 42, 0.18);
+}
+
+body.vybe-theme-active.vybe-light .vybe-create-sheet > div:first-child,
+body.vybe-theme-active.vybe-light .vybe-settings-sheet > div:first-child {
+  background: rgba(255, 255, 255, 0.98);
+}
+
 .vybe-sidebar nav button:hover,
 .vybe-right-rail button:hover {
   box-shadow: inset 3px 0 0 var(--vybe-brand);
@@ -785,6 +829,13 @@ body.vybe-theme-active.vybe-light .vybe-app-shell .vybe-mobile-bottom-nav {
     backdrop-filter: none;
   }
 
+  .vybe-feed-panel:not(.fixed) {
+    min-height: 100svh !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: calc(var(--vybe-mobile-nav-height) + 1rem) !important;
+  }
+
   .vybe-app-shell article {
     border-radius: 18px !important;
     margin-inline: 0;
@@ -821,6 +872,53 @@ body.vybe-theme-active.vybe-light .vybe-app-shell .vybe-mobile-bottom-nav {
   .vybe-app-shell .vybe-mobile-bottom-fill {
     z-index: 9998;
     background: #050713;
+  }
+
+  .vybe-create-overlay,
+  .vybe-settings-overlay {
+    align-items: flex-end !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .vybe-create-sheet,
+  .vybe-settings-sheet {
+    width: 100% !important;
+    max-width: none !important;
+    max-height: min(92svh, calc(100svh - 0.75rem)) !important;
+    border-right: 0 !important;
+    border-bottom: 0 !important;
+    border-left: 0 !important;
+    border-radius: 24px 24px 0 0 !important;
+  }
+
+  .vybe-create-sheet > div:first-child,
+  .vybe-settings-sheet > div:first-child {
+    min-height: 4rem;
+  }
+
+  .vybe-create-sheet > div:last-child,
+  .vybe-settings-sheet form {
+    padding-bottom: max(1.25rem, env(safe-area-inset-bottom)) !important;
+  }
+
+  .vybe-create-sheet textarea {
+    height: 88px !important;
+    min-height: 88px !important;
+  }
+
+  .vybe-create-sheet label.h-28 {
+    height: 104px !important;
+  }
+
+  .vybe-create-sheet img,
+  .vybe-create-sheet video {
+    max-height: 42svh !important;
+  }
+
+  .vybe-settings-profile-grid {
+    grid-template-columns: 1fr !important;
   }
 
   body.vybe-theme-active.vybe-light .vybe-app-shell .vybe-mobile-bottom-fill {

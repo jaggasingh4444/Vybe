@@ -221,7 +221,11 @@ function LeftHome() {
   ];
 
   return (
-    <aside className="vybe-sidebar hidden lg:flex lg:w-[300px] xl:w-[340px] shrink-0 min-h-[100vh] bg-black border-r border-gray-900 flex-col">
+    <aside
+      className={`vybe-sidebar ${
+        settingsOpen ? "vybe-modal-host-open" : ""
+      } hidden lg:flex lg:w-[300px] xl:w-[340px] shrink-0 min-h-[100vh] bg-black border-r border-gray-900 flex-col`}
+    >
       <div className="w-full h-[96px] flex items-center justify-between px-6">
         <img src={logo} alt="logo" className="w-[92px]" />
         <div className="flex items-center text-white text-2xl">
@@ -323,8 +327,8 @@ function LeftHome() {
       </div>
 
       {settingsOpen ? (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center px-4">
-          <div className="w-full max-w-[520px] max-h-[92vh] overflow-y-auto rounded-lg border border-gray-800 bg-[#050505] text-white">
+        <div className="vybe-settings-overlay fixed inset-0 z-50 bg-black/70 flex items-center justify-center px-4">
+          <div className="vybe-settings-sheet w-full max-w-[520px] max-h-[92svh] overflow-y-auto rounded-lg border border-gray-800 bg-[#050505] text-white">
             <div className="h-14 px-5 flex items-center justify-between border-b border-gray-900">
               <h2 className="font-semibold">Settings</h2>
               <button
@@ -359,7 +363,7 @@ function LeftHome() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="vybe-settings-profile-grid grid grid-cols-2 gap-3">
                 <label className="flex flex-col gap-2 text-sm text-gray-400">
                   Name
                   <input

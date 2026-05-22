@@ -4066,6 +4066,7 @@ function Feed() {
   const mobileShellStyle = isMobileChatTab
     ? mobileChatViewportStyle
     : { paddingBottom: mobileBottomNavHeight };
+  const feedOverlayOpen = createOpen || mobileSettingsOpen || shareItem;
   const mobileChatWallpaperStyle = {
     backgroundColor: "#0b141a",
     backgroundImage:
@@ -4086,7 +4087,7 @@ function Feed() {
       ref={feedRootRef}
       data-vybe-feed-root
       style={mobileShellStyle}
-      className={`vybe-feed-panel vybe-mobile-shell w-full lg:flex-1 lg:max-w-[840px] xl:max-w-[900px] bg-black relative border-x border-gray-900 ${
+      className={`vybe-feed-panel vybe-mobile-shell ${feedOverlayOpen ? "vybe-modal-host-open" : ""} w-full lg:flex-1 lg:max-w-[840px] xl:max-w-[900px] bg-black relative border-x border-gray-900 ${
         isMobileChatTab ? "pb-0" : ""
       } lg:pb-0 ${
         isMobileChatTab
@@ -5446,10 +5447,10 @@ function Feed() {
       </div>
 
       {createOpen ? (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center px-0 sm:px-4">
+        <div className="vybe-create-overlay fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center px-0 sm:px-4">
           <form
             onSubmit={handleUpload}
-            className="w-full sm:max-w-[520px] rounded-t-2xl sm:rounded-lg border-t sm:border border-gray-800 bg-[#050505] overflow-hidden text-white"
+            className="vybe-create-sheet w-full sm:max-w-[520px] max-h-[92svh] overflow-y-auto rounded-t-2xl sm:rounded-lg border-t sm:border border-gray-800 bg-[#050505] text-white"
           >
             <div className="h-14 px-4 flex items-center justify-between border-b border-gray-900">
               <div className="flex items-center gap-3 min-w-0">
@@ -5644,7 +5645,7 @@ function Feed() {
       ) : null}
 
       {shareItem ? (
-        <div className="fixed inset-0 z-[60] bg-black/80 flex items-end sm:items-center justify-center px-0 sm:px-4">
+        <div className="vybe-create-overlay fixed inset-0 z-[60] bg-black/80 flex items-end sm:items-center justify-center px-0 sm:px-4">
           <div className="w-full sm:max-w-[420px] max-h-[82vh] overflow-hidden rounded-t-2xl sm:rounded-lg border-t sm:border border-gray-800 bg-[#050505] text-white">
             <div className="h-14 px-4 flex items-center justify-between border-b border-gray-900">
               <div className="min-w-0">
@@ -6213,8 +6214,8 @@ function Feed() {
       ) : null}
 
       {mobileSettingsOpen ? (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center">
-          <div className="w-full sm:max-w-[420px] max-h-[92vh] overflow-y-auto bg-[#050505] border-t sm:border border-gray-800 rounded-t-2xl sm:rounded-lg text-white">
+        <div className="vybe-settings-overlay fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center">
+          <div className="vybe-settings-sheet w-full sm:max-w-[420px] max-h-[92svh] overflow-y-auto bg-[#050505] border-t sm:border border-gray-800 rounded-t-2xl sm:rounded-lg text-white">
             <div className="h-14 px-4 flex items-center justify-between border-b border-gray-900">
               <h2 className="font-semibold">Settings</h2>
               <button
