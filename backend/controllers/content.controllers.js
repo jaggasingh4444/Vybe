@@ -327,17 +327,31 @@ export const getStories = async (req, res) => {
 
 export const createStory = async (req, res) => {
   try {
-    const { media, mediaType } = req.body;
+    const { media: bodyMedia, mediaType: bodyMediaType } = req.body;
+    const uploadedFile = req.file;
+    const fileMediaType = uploadedFile?.mimetype?.startsWith("video/")
+      ? "video"
+      : uploadedFile?.mimetype?.startsWith("image/")
+        ? "image"
+        : "";
+    const mediaType = uploadedFile ? fileMediaType : bodyMediaType;
 
     if (!["image", "video"].includes(mediaType)) {
       return res.status(400).json({ message: "Story media must be an image or video" });
     }
 
-    if (!isDataUrl(media)) {
+    if (!uploadedFile && !isDataUrl(bodyMedia)) {
       return res.status(400).json({ message: "Valid story media is required" });
     }
 
-    const storedMedia = await saveDataUrlMedia(media, "stories", req);
+    const storedMedia = uploadedFile
+      ? await saveBinaryMedia(uploadedFile.buffer, uploadedFile.mimetype, "stories", req)
+      : await saveDataUrlMedia(bodyMedia, "stories", req);
+
+    if (!storedMedia) {
+      return res.status(400).json({ message: "Story media upload failed" });
+    }
+
     const story = await Story.create({
       author: req.userId,
       mediaType,

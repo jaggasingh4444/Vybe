@@ -85,7 +85,7 @@ contentRouter.get("/reels", isAuth, (_req, res) =>
 contentRouter.post("/posts", isAuth, upload.single("media"), createPost);
 contentRouter.post("/reels", isAuth, upload.single("media"), createReel);
 contentRouter.post("/upload-media", isAuth, upload.single("media"), uploadMediaToS3);
-contentRouter.post("/stories", isAuth, createStory);
+contentRouter.post("/stories", isAuth, upload.single("media"), createStory);
 contentRouter.post("/stories/:storyId/view", isAuth, viewStory);
 contentRouter.delete("/stories/:storyId", isAuth, deleteStory);
 contentRouter.get("/:type/:id", isAuth, getContentById);

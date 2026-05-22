@@ -1810,15 +1810,14 @@ function Feed() {
     setStoryUploadProgress(4);
 
     try {
-      const media = await readFileAsDataUrl(file);
       const mediaType = file.type.startsWith("video/") ? "video" : "image";
-      setStoryUploadProgress(8);
 
-      const data = await uploadJsonWithProgress({
+      const data = await uploadContentWithFile({
         url: apiUrl("/api/content/stories"),
-        payload: { media, mediaType },
-        onProgress: (progress) => setStoryUploadProgress(Math.max(8, progress)),
-        errorMessage: "Story upload failed",
+        file,
+        caption: "",
+        mediaType,
+        onProgress: (progress) => setStoryUploadProgress(Math.max(4, progress)),
       });
 
       const uploadedStory = {
@@ -1829,7 +1828,7 @@ function Feed() {
           userName: userData?.userName,
           profileImage: userData?.profileImage,
         },
-        media: data.media || media,
+        media: data.media || "",
         mediaType: data.mediaType || mediaType,
         viewers: Array.isArray(data.viewers) ? data.viewers : [],
         createdAt: data.createdAt || new Date().toISOString(),
