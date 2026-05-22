@@ -454,6 +454,86 @@ const uploadContentMedia = (file, onProgress) =>
     xhr.send(file);
   });
 
+const uploadContentMediaFormData = (file, onProgress) =>
+  new Promise((resolve, reject) => {
+    if (!file) {
+      resolve(null);
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("media", file);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", apiUrl("/api/content/upload-media"), true);
+    xhr.withCredentials = true;
+    xhr.timeout = CONTENT_MEDIA_UPLOAD_TIMEOUT_MS;
+
+    getTabAuthHeaders().forEach((value, key) => {
+      xhr.setRequestHeader(key, value);
+    });
+
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable) return;
+
+      const progress = Math.max(1, Math.min(100, Math.round((event.loaded / event.total) * 100)));
+      onProgress?.(progress);
+    };
+
+    xhr.onload = () => {
+      let data = {};
+
+      try {
+        data = xhr.responseText ? JSON.parse(xhr.responseText) : {};
+      } catch {
+        data = {};
+      }
+
+      if (xhr.status < 200 || xhr.status >= 300) {
+        reject(new Error(data.message || "Media upload failed"));
+        return;
+      }
+
+      const media = data.media || data.url;
+      if (!media) {
+        reject(new Error("Media upload failed"));
+        return;
+      }
+
+      onProgress?.(100);
+      resolve({
+        media,
+        mediaType: data.mediaType || (file.type.startsWith("video/") ? "video" : "image"),
+      });
+    };
+
+    xhr.onerror = () => reject(new Error("Media upload failed"));
+    xhr.ontimeout = () => reject(new Error("Media upload is taking too long"));
+    xhr.onabort = () => reject(new Error("Media upload cancelled"));
+    xhr.send(formData);
+  });
+
+const uploadContentMediaReliable = async (file, onProgress) => {
+  if (!file) return null;
+
+  try {
+    return await uploadContentMedia(file, onProgress);
+  } catch (rawUploadError) {
+    try {
+      return await uploadContentMediaFormData(file, onProgress);
+    } catch (formUploadError) {
+      if (file.type.startsWith("image/")) {
+        return {
+          media: await readFileAsDataUrl(file),
+          mediaType: "image",
+        };
+      }
+
+      throw formUploadError || rawUploadError;
+    }
+  }
+};
+
 const uploadChatAttachment = (attachment) =>
   new Promise((resolve, reject) => {
     if (!attachment?.file) {
@@ -2192,7 +2272,7 @@ function Feed() {
       const uploadMode = selectedFile && selectedMediaType === "video" ? "reel" : "post";
       const endpoint = uploadMode === "reel" ? "/api/content/reels" : "/api/content/posts";
       const uploadedMedia = selectedFile
-        ? await uploadContentMedia(selectedFile, (progress) => {
+        ? await uploadContentMediaReliable(selectedFile, (progress) => {
             setUploadProgress(Math.max(6, Math.min(92, Math.round(progress * 0.9))));
           })
         : null;
