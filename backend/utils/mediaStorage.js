@@ -78,9 +78,14 @@ export const saveBinaryMedia = async (buffer, mimeType, folder, req) => {
   const match = typeof mimeType === "string" ? mimeType.match(mediaTypePattern) : null;
   if (!Buffer.isBuffer(buffer) || buffer.length === 0 || !match) return "";
 
-  const [, , rawExtension] = match;
+  const [, mediaKind, rawExtension] = match;
   const extension = extensionMap[rawExtension.toLowerCase()] || rawExtension.toLowerCase();
   const safeFolder = getSafeFolder(folder);
+
+  if (shouldStoreInDatabase(safeFolder, req, mediaKind)) {
+    return `data:${mimeType};base64,${buffer.toString("base64")}`;
+  }
+
   const directory = path.join(uploadsRoot, safeFolder);
   const filename = `${Date.now()}-${crypto.randomUUID()}.${extension}`;
 

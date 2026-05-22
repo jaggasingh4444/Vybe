@@ -613,6 +613,7 @@ function Feed() {
   const [message, setMessage] = useState("");
   const [onlineUserIds, setOnlineUserIds] = useState(() => new Set());
   const [feedVideosMuted, setFeedVideosMuted] = useState(true);
+  const [brokenMediaKeys, setBrokenMediaKeys] = useState(() => new Set());
   const feedRootRef = useRef(null);
   const refreshHomeFeedRef = useRef(null);
   const feedVideosMutedRef = useRef(true);
@@ -620,6 +621,18 @@ function Feed() {
   const pendingLikeIdsRef = useRef(new Set());
   const pendingCommentIdsRef = useRef(new Set());
   const pendingReplyIdsRef = useRef(new Set());
+
+  const markBrokenMedia = useCallback((item) => {
+    const key = getContentKey(item);
+    if (!key) return;
+
+    setBrokenMediaKeys((current) => {
+      if (current.has(key)) return current;
+      const next = new Set(current);
+      next.add(key);
+      return next;
+    });
+  }, []);
 
   const syncMobileChatUserFromMessage = useCallback((message) => {
     const currentUserId = userData?._id?.toString();
@@ -3535,6 +3548,8 @@ function Feed() {
   const profileReelCount = activeProfileContent.filter((item) => item.type === "reel").length;
   const viewingOwnProfile = activeProfileUser?._id === userData?._id;
   const selectedProfileItemKey = getContentKey(selectedProfileItem);
+  const selectedProfileItemIsTextPost =
+    isTextPost(selectedProfileItem) || brokenMediaKeys.has(selectedProfileItemKey);
   const selectedProfileItemIsOwn = isSameId(selectedProfileItem?.author?._id, userData?._id);
   const selectedProfileItemDeletePending = pendingContentDeleteIds.has(selectedProfileItemKey);
   const profileIsFollowing = activeProfileUser?._id
@@ -4671,40 +4686,47 @@ function Feed() {
 
                 {visibleProfileContent.length > 0 ? (
                   <div className="grid grid-cols-3 gap-1">
-                    {visibleProfileContent.map((item) => (
-                      <button
-                        type="button"
-                        key={`${item.type}-${item._id}`}
-                        className="relative aspect-square bg-[#101010] overflow-hidden"
-                        onClick={() => setSelectedProfileItem(item)}
-                        title={item.caption || item.type}
-                      >
-                        {isTextPost(item) ? (
-                          <div className="flex h-full w-full items-center justify-center bg-[#080808] p-3">
-                            <p className="max-h-full overflow-hidden break-words text-center text-sm font-semibold text-white">
-                              {item.caption}
-                            </p>
+                    {visibleProfileContent.map((item) => {
+                      const contentKey = getContentKey(item);
+                      const renderAsTextPost = isTextPost(item) || brokenMediaKeys.has(contentKey);
+
+                      return (
+                        <button
+                          type="button"
+                          key={`${item.type}-${item._id}`}
+                          className="relative aspect-square bg-[#101010] overflow-hidden"
+                          onClick={() => setSelectedProfileItem(item)}
+                          title={item.caption || item.type}
+                        >
+                          {renderAsTextPost ? (
+                            <div className="flex h-full w-full items-center justify-center bg-[#080808] p-3">
+                              <p className="max-h-full overflow-hidden break-words text-center text-sm font-semibold text-white">
+                                {item.caption}
+                              </p>
+                            </div>
+                          ) : item.mediaType === "video" ? (
+                            <video
+                              src={mediaUrl(item.media)}
+                              muted
+                              playsInline
+                              preload="metadata"
+                              onError={() => markBrokenMedia(item)}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <img
+                              src={mediaUrl(item.media)}
+                              alt={item.caption || "Profile post"}
+                              onError={() => markBrokenMedia(item)}
+                              className="w-full h-full object-cover"
+                            />
+                          )}
+                          <div className="absolute left-2 top-2 rounded bg-black/70 px-2 py-1 text-[10px] font-semibold text-white">
+                            {item.type === "reel" ? "Reel" : "Post"}
                           </div>
-                        ) : item.mediaType === "video" ? (
-                          <video
-                            src={mediaUrl(item.media)}
-                            muted
-                            playsInline
-                            preload="metadata"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <img
-                            src={mediaUrl(item.media)}
-                            alt={item.caption || "Profile post"}
-                            className="w-full h-full object-cover"
-                          />
-                        )}
-                        <div className="absolute left-2 top-2 rounded bg-black/70 px-2 py-1 text-[10px] font-semibold text-white">
-                          {item.type === "reel" ? "Reel" : "Post"}
-                        </div>
-                      </button>
-                    ))}
+                        </button>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="border border-gray-900 rounded-lg bg-[#050505] px-6 py-12 text-center">
@@ -5193,6 +5215,7 @@ function Feed() {
             const authorFollowsMe = authorId ? mobileFollowerIds.has(authorId) : false;
             const authorIsFollowing = authorId ? mobileFollowingIds.has(authorId) : false;
             const showAuthorFollow = Boolean(authorId && !isOwnAuthor && !authorIsFollowing);
+            const renderAsTextPost = isTextPost(item) || brokenMediaKeys.has(contentKey);
 
             return (
             <article
@@ -5270,7 +5293,7 @@ function Feed() {
                     : "bg-[#101010]"
                 }
               >
-                {isTextPost(item) ? (
+                {renderAsTextPost ? (
                   <div className="min-h-[220px] w-full bg-[#080808] px-6 py-10 flex items-center justify-center">
                     <p className="max-w-2xl whitespace-pre-wrap break-words text-center text-2xl font-semibold leading-snug text-white">
                       {item.caption}
@@ -5286,6 +5309,7 @@ function Feed() {
                     playsInline
                     preload="metadata"
                     data-feed-video
+                    onError={() => markBrokenMedia(item)}
                     onVolumeChange={(event) => {
                       const nextMuted = event.currentTarget.muted;
                       if (nextMuted !== feedVideosMutedRef.current) {
@@ -5310,6 +5334,7 @@ function Feed() {
                   <img
                     src={mediaUrl(item.media)}
                     alt={item.caption || "Post media"}
+                    onError={() => markBrokenMedia(item)}
                     className={
                       isMobileReelFeed
                         ? "w-full h-full object-contain bg-black"
@@ -5341,7 +5366,7 @@ function Feed() {
                   <FaRegBookmark />
                 </div>
                 <p className="text-white text-sm font-semibold mt-4">{item.likes?.length || 0} likes</p>
-                {item.caption && !isTextPost(item) ? (
+                {item.caption && !renderAsTextPost ? (
                   <p className="text-sm mt-1">
                     <span className="mr-2 inline-flex max-w-full items-center gap-1 align-bottom text-white font-semibold">
                       <span className="truncate">{item.author?.userName || "vybe_user"}</span>
@@ -5769,7 +5794,7 @@ function Feed() {
             </div>
 
             <div className="bg-black flex items-center justify-center">
-              {isTextPost(selectedProfileItem) ? (
+              {selectedProfileItemIsTextPost ? (
                 <div className="flex min-h-[320px] w-full items-center justify-center bg-[#080808] px-8 py-12">
                   <p className="max-w-2xl whitespace-pre-wrap break-words text-center text-3xl font-semibold leading-snug text-white">
                     {selectedProfileItem.caption}
@@ -5781,12 +5806,14 @@ function Feed() {
                   controls
                   autoPlay
                   playsInline
+                  onError={() => markBrokenMedia(selectedProfileItem)}
                   className="w-full max-h-[72vh] bg-black object-contain"
                 />
               ) : (
                 <img
                   src={mediaUrl(selectedProfileItem.media)}
                   alt={selectedProfileItem.caption || "Profile media"}
+                  onError={() => markBrokenMedia(selectedProfileItem)}
                   className="w-full max-h-[72vh] object-contain bg-black"
                 />
               )}
@@ -5807,7 +5834,7 @@ function Feed() {
                 </div>
               </div>
 
-              {selectedProfileItem.caption && !isTextPost(selectedProfileItem) ? (
+              {selectedProfileItem.caption && !selectedProfileItemIsTextPost ? (
                 <p className="mt-3 text-sm">
                   <span className="mr-2 inline-flex max-w-full items-center gap-1 align-bottom font-semibold text-white">
                     <span className="truncate">{selectedProfileItem.author?.userName || "vybe_user"}</span>
