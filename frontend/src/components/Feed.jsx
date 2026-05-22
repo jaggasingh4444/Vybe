@@ -5281,7 +5281,7 @@ function Feed() {
                 </div>
 
                 {visibleMobileChatUsers.length > 0 ? (
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col">
                     {visibleMobileChatUsers.map((chatUser) => {
                       const followsMe = mobileFollowerIds.has(chatUser._id);
                       const isFollowing = mobileFollowingIds.has(chatUser._id);
@@ -5300,10 +5300,10 @@ function Feed() {
                             event.preventDefault();
                             openMobileChatListActions(chatUser);
                           }}
-                          className={`min-h-16 select-none rounded-lg border px-3 py-2 flex items-center gap-3 transition ${
+                          className={`min-h-16 select-none rounded-xl px-1.5 py-2.5 flex items-center gap-3 transition ${
                             mobileChatListMenuUserId === chatUser._id
-                              ? "border-white/20 bg-[#111]"
-                              : "border-gray-900 bg-[#080808]"
+                              ? "bg-white/5"
+                              : "hover:bg-white/[0.03]"
                           }`}
                         >
                           <button
