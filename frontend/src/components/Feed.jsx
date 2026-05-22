@@ -4166,9 +4166,9 @@ function Feed() {
             {notificationsOpen ? (
               <div
                 data-vybe-notification-panel
-                className="absolute right-0 mt-3 w-[320px] max-h-[420px] overflow-y-auto rounded-lg border border-gray-800 bg-[#050505] shadow-2xl"
+                className="vybe-notification-panel absolute right-0 mt-3 w-[360px] max-h-[460px] overflow-y-auto rounded-2xl border border-gray-800 bg-[#050505] shadow-2xl"
               >
-                <div className="px-4 py-3 border-b border-gray-900">
+                <div className="sticky top-0 z-10 px-4 py-3 border-b border-gray-900 bg-[#050505]/95 backdrop-blur">
                   <p className="text-white font-semibold">Notifications</p>
                 </div>
                 {notifications.length > 0 ? (
@@ -4184,29 +4184,41 @@ function Feed() {
                       <div
                         key={notification._id}
                         data-vybe-notification-item
-                        className="px-4 py-3 border-b border-gray-900 last:border-b-0"
+                        className="vybe-notification-item px-4 py-3 border-b border-gray-900 last:border-b-0"
                       >
-                        <div className="flex items-start gap-3">
+                        <div className="flex items-center gap-3">
                           <button
                             type="button"
                             onClick={() => handleNotificationOpen(notification)}
-                            className="min-w-0 flex-1 text-left"
+                            className="min-w-0 flex flex-1 items-center gap-3 text-left"
                           >
-                            <p className="text-sm text-gray-200">
-                              <span className="font-semibold text-white">{notification.actor?.userName || "Someone"}</span>{" "}
-                              {getNotificationActionLabel(notification)}.
-                            </p>
-                            {notification.text && shouldShowNotificationText ? (
-                              <p className="text-xs text-gray-500 mt-1 truncate">{notification.text}</p>
-                            ) : null}
+                            <img
+                              src={mediaUrl(notification.actor?.profileImage) || dp}
+                              alt={notification.actor?.userName || "Notification"}
+                              className="h-10 w-10 shrink-0 rounded-full object-cover bg-[#171717]"
+                              onError={(event) => {
+                                event.currentTarget.src = dp;
+                              }}
+                            />
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-sm leading-snug text-gray-200">
+                                <span className="font-semibold text-white">{notification.actor?.userName || "Someone"}</span>{" "}
+                                {getNotificationActionLabel(notification)}.
+                              </span>
+                              {notification.text && shouldShowNotificationText ? (
+                                <span className="vybe-notification-text mt-1 block text-xs leading-snug text-gray-500">
+                                  {notification.text}
+                                </span>
+                              ) : null}
+                            </span>
                           </button>
                           {isFollowNotification && actorId ? (
                             <button
                               type="button"
                               onClick={() => handleFeedUserFollow(notification.actor)}
                               disabled={alreadyFollowingActor || feedUserBusyId === actorId}
-                              className={`shrink-0 rounded-md px-3 py-1.5 text-xs font-semibold disabled:opacity-60 ${
-                                alreadyFollowingActor ? "bg-[#171717] text-gray-400" : "bg-white text-black"
+                              className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold disabled:opacity-60 ${
+                                alreadyFollowingActor ? "bg-[#171717] text-gray-400" : "bg-blue-600 text-white"
                               }`}
                             >
                               {feedUserBusyId === actorId
@@ -6295,6 +6307,22 @@ function Feed() {
 
               <AdminVerificationPanel userData={userData} />
 
+              <div className="border-t border-gray-900 pt-4">
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-900 bg-[#080808] p-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold">Account</p>
+                    <p className="text-xs text-gray-500 truncate">Sign out from this phone.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleMobileLogout}
+                    className="h-10 shrink-0 rounded-full bg-red-500/10 px-4 text-sm font-semibold text-red-300 flex items-center justify-center gap-2"
+                  >
+                    <FiLogOut /> Logout
+                  </button>
+                </div>
+              </div>
+
               <div className="border-t border-gray-900 pt-4 flex flex-col gap-3">
                 <button
                   type="button"
@@ -6388,20 +6416,13 @@ function Feed() {
                 {mobileSettingsStatus || "Profile settings are available on mobile now."}
               </p>
 
-              <div className="vybe-mobile-settings-actions grid grid-cols-2 gap-3">
+              <div className="vybe-mobile-settings-actions">
                 <button
                   type="submit"
                   disabled={mobileSaving}
-                  className="h-11 rounded-md bg-white text-black font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+                  className="h-11 w-full rounded-md bg-white text-black font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
                 >
                   <FiSave /> {mobileSaving ? "Saving" : "Save"}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleMobileLogout}
-                  className="h-11 rounded-md bg-[#171717] text-red-400 font-semibold flex items-center justify-center gap-2"
-                >
-                  <FiLogOut /> Logout
                 </button>
               </div>
             </form>
