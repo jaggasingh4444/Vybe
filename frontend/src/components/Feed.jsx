@@ -5435,7 +5435,7 @@ function Feed() {
 	                  : "vybe-feed-card border border-gray-900 rounded-lg overflow-hidden bg-black"
 	              }
 	            >
-              <div className="flex items-center justify-between px-4 py-3">
+              <div className="relative z-20 flex items-center justify-between px-4 py-3">
                 <div className="flex min-w-0 flex-1 items-center gap-3">
                   <button
                     type="button"
@@ -5483,12 +5483,12 @@ function Feed() {
                   </div>
                 </div>
                 {isOwnAuthor ? (
-                  <div className="relative shrink-0">
+                  <div className="relative z-30 shrink-0">
                     <button
                       type="button"
                       onClick={() => setFeedItemMenuKey((currentKey) => (currentKey === contentKey ? "" : contentKey))}
                       disabled={deletePending}
-                      className="w-9 h-9 rounded-full hover:bg-[#111] text-gray-400 hover:text-white flex items-center justify-center disabled:opacity-40"
+                      className="w-10 h-10 rounded-full bg-[#111]/90 text-white shadow-lg hover:bg-[#1d1d1d] flex items-center justify-center disabled:opacity-40"
                       aria-label="Post options"
                       aria-haspopup="menu"
                       aria-expanded={feedItemMenuOpen}
@@ -5496,12 +5496,12 @@ function Feed() {
                       <FiMoreVertical />
                     </button>
                     {feedItemMenuOpen ? (
-                      <div className="absolute right-0 top-10 z-30 w-48 overflow-hidden rounded-lg border border-gray-800 bg-[#080808] shadow-2xl">
+                      <div className="absolute right-0 top-11 z-[80] w-52 overflow-hidden rounded-xl border border-gray-700 bg-[#050505] shadow-2xl ring-1 ring-black/40">
                         <button
                           type="button"
                           onClick={() => requestContentDelete(item)}
                           disabled={deletePending}
-                          className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-red-400 hover:bg-[#141414] disabled:opacity-50"
+                          className="flex w-full items-center gap-3 px-4 py-3.5 text-left text-sm font-semibold text-red-300 hover:bg-red-500/10 disabled:opacity-50"
                           role="menuitem"
                         >
                           <FiTrash2 />
