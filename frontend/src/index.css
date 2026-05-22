@@ -807,14 +807,24 @@ body.vybe-theme-active.vybe-light .vybe-settings-sheet > div:first-child {
   html,
   body,
   #root {
+    height: auto;
+    min-height: 100%;
     width: 100%;
     overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  body {
+    overscroll-behavior-y: auto;
+    touch-action: pan-y;
   }
 
   .vybe-app-shell {
+    min-height: 100dvh;
     width: 100%;
     justify-content: flex-start !important;
     align-items: stretch !important;
+    overflow: visible !important;
     background:
       radial-gradient(circle at 20% 0%, rgba(101, 87, 255, 0.14), transparent 36%),
       #050713 !important;
@@ -829,11 +839,17 @@ body.vybe-theme-active.vybe-light .vybe-settings-sheet > div:first-child {
     backdrop-filter: none;
   }
 
-  .vybe-feed-panel:not(.fixed) {
-    min-height: 100svh !important;
+  .vybe-feed-panel:not(.fixed):not(.snap-y) {
+    height: auto !important;
+    min-height: 100dvh !important;
+    overflow: visible !important;
+    padding-bottom: calc(var(--vybe-mobile-nav-height) + 1rem) !important;
+  }
+
+  .vybe-feed-panel.snap-y {
+    height: 100dvh !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
-    padding-bottom: calc(var(--vybe-mobile-nav-height) + 1rem) !important;
   }
 
   .vybe-app-shell article {
@@ -886,7 +902,9 @@ body.vybe-theme-active.vybe-light .vybe-settings-sheet > div:first-child {
   .vybe-settings-sheet {
     width: 100% !important;
     max-width: none !important;
-    max-height: min(92svh, calc(100svh - 0.75rem)) !important;
+    max-height: min(94dvh, calc(100dvh - 0.5rem)) !important;
+    overflow-y: auto !important;
+    touch-action: pan-y;
     border-right: 0 !important;
     border-bottom: 0 !important;
     border-left: 0 !important;
@@ -919,6 +937,21 @@ body.vybe-theme-active.vybe-light .vybe-settings-sheet > div:first-child {
 
   .vybe-settings-profile-grid {
     grid-template-columns: 1fr !important;
+  }
+
+  .vybe-mobile-settings-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 6;
+    margin-inline: -1rem;
+    margin-bottom: calc(-1 * max(1.25rem, env(safe-area-inset-bottom)));
+    padding: 0.75rem 1rem max(1rem, env(safe-area-inset-bottom));
+    background: linear-gradient(180deg, rgba(9, 12, 28, 0), rgba(9, 12, 28, 0.98) 22%);
+    backdrop-filter: blur(12px);
+  }
+
+  body.vybe-theme-active.vybe-light .vybe-mobile-settings-actions {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.98) 22%);
   }
 
   body.vybe-theme-active.vybe-light .vybe-app-shell .vybe-mobile-bottom-fill {

@@ -6388,7 +6388,7 @@ function Feed() {
                 {mobileSettingsStatus || "Profile settings are available on mobile now."}
               </p>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="vybe-mobile-settings-actions grid grid-cols-2 gap-3">
                 <button
                   type="submit"
                   disabled={mobileSaving}
