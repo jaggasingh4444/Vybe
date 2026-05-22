@@ -1,13 +1,15 @@
 import crypto from "crypto";
 import { mkdir, writeFile } from "fs/promises";
+import mongoose from "mongoose";
 import path from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const uploadsRoot = path.join(__dirname, "..", "uploads");
+const databaseBucketName = "vybeMedia";
 const dataUrlPattern = /^data:(image|video)\/([a-zA-Z0-9.+-]+);base64,(.+)$/;
 const mediaTypePattern = /^(image|video)\/([a-zA-Z0-9.+-]+)$/;
-const databaseDefaultFolders = new Set(["content", "stories", "profiles"]);
+const databaseDefaultFolders = new Set(["chat", "content", "stories", "profiles"]);
 const extensionMap = {
   jpeg: "jpg",
   "svg+xml": "svg",
@@ -38,15 +40,43 @@ const isLocalHost = (host = "") =>
 const shouldStoreInDatabase = (safeFolder, req, mediaKind) => {
   const storageMode = (process.env.MEDIA_STORAGE || "").toLowerCase();
 
-  // MongoDB documents are capped at 16 MB, so hosted videos need file storage.
-  if (mediaKind === "video") return false;
-
   if (["db", "database", "mongo", "mongodb"].includes(storageMode)) return true;
   if (["file", "files", "filesystem", "uploads"].includes(storageMode)) return false;
 
-  const host = req?.get?.("x-forwarded-host") || req?.get?.("host") || "";
+  let configuredHost = "";
+  try {
+    configuredHost = process.env.SERVER_URL ? new URL(process.env.SERVER_URL).host : "";
+  } catch {
+    configuredHost = "";
+  }
+
+  const host = req?.get?.("x-forwarded-host") || req?.get?.("host") || configuredHost;
   return databaseDefaultFolders.has(safeFolder) && !isLocalHost(host);
 };
+
+const saveBufferToDatabase = (buffer, mimeType, safeFolder, mediaKind, extension) =>
+  new Promise((resolve, reject) => {
+    if (!mongoose.connection.db) {
+      reject(new Error("Database media storage is not ready"));
+      return;
+    }
+
+    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
+      bucketName: databaseBucketName,
+    });
+    const filename = `${safeFolder}-${Date.now()}-${crypto.randomUUID()}.${extension}`;
+    const uploadStream = bucket.openUploadStream(filename, {
+      contentType: mimeType,
+      metadata: {
+        folder: safeFolder,
+        mediaKind,
+      },
+    });
+
+    uploadStream.once("error", reject);
+    uploadStream.once("finish", () => resolve(`/api/media/${uploadStream.id.toString()}`));
+    uploadStream.end(buffer);
+  });
 
 export const saveDataUrlMedia = async (dataUrl, folder, req) => {
   const match = typeof dataUrl === "string" ? dataUrl.match(dataUrlPattern) : null;
@@ -57,7 +87,13 @@ export const saveDataUrlMedia = async (dataUrl, folder, req) => {
   const safeFolder = getSafeFolder(folder);
 
   if (shouldStoreInDatabase(safeFolder, req, mediaKind)) {
-    return dataUrl;
+    return saveBufferToDatabase(
+      Buffer.from(base64Data, "base64"),
+      `${mediaKind}/${rawExtension}`,
+      safeFolder,
+      mediaKind,
+      extension
+    );
   }
 
   const directory = path.join(uploadsRoot, safeFolder);
@@ -72,7 +108,9 @@ export const saveDataUrlMedia = async (dataUrl, folder, req) => {
 export const isStoredMediaUrl = (value) =>
   typeof value === "string" &&
   (/^https?:\/\/.+\/uploads\/[^?#]+\/[^?#]+/.test(value) ||
-    value.startsWith("/uploads/"));
+    /^https?:\/\/.+\/api\/media\/[^?#]+/.test(value) ||
+    value.startsWith("/uploads/") ||
+    value.startsWith("/api/media/"));
 
 export const saveBinaryMedia = async (buffer, mimeType, folder, req) => {
   const match = typeof mimeType === "string" ? mimeType.match(mediaTypePattern) : null;
@@ -83,7 +121,7 @@ export const saveBinaryMedia = async (buffer, mimeType, folder, req) => {
   const safeFolder = getSafeFolder(folder);
 
   if (shouldStoreInDatabase(safeFolder, req, mediaKind)) {
-    return `data:${mimeType};base64,${buffer.toString("base64")}`;
+    return saveBufferToDatabase(buffer, mimeType, safeFolder, mediaKind, extension);
   }
 
   const directory = path.join(uploadsRoot, safeFolder);

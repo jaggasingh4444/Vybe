@@ -11,6 +11,7 @@ import chatRouter from "./routes/chat.routes.js";
 import contentRouter from "./routes/content.routes.js";
 import userRouter from "./routes/user.routes.js";
 import connectDb from "./config/db.js";
+import { getMedia } from "./controllers/media.controllers.js";
 
 dotenv.config();
 const app = express();
@@ -43,6 +44,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.get("/api/media/:mediaId", getMedia);
 
 // Routes
 app.use("/api/auth", authRouter);
