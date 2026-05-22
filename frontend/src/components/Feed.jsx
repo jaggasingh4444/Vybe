@@ -6137,14 +6137,14 @@ function Feed() {
       {selectedStory ? (
         <div
           data-vybe-story-viewer
-          className="fixed inset-0 z-50 bg-[#0f1216] flex justify-center text-white"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#050713]/95 px-3 py-4 text-white backdrop-blur-xl"
           onClick={closeStoryViewer}
         >
           <div
-            className="relative w-full max-w-[560px] min-h-screen bg-[#111418] flex flex-col overflow-hidden"
+            className="vybe-story-card relative flex h-[min(92svh,760px)] w-full max-w-[430px] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[#090c1f] shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="px-3 pt-4">
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/75 via-black/25 to-transparent px-3 pb-10 pt-3">
               <div className="flex gap-1">
                 {selectedStoryStack.map((story, index) => {
                   const segmentProgress =
@@ -6157,7 +6157,7 @@ function Feed() {
                   return (
                     <div
                       key={story._id}
-                      className="h-[3px] flex-1 rounded-full bg-white/30 overflow-hidden"
+                      className="h-[3px] flex-1 overflow-hidden rounded-full bg-white/30"
                     >
                       <div
                         className="h-full rounded-full bg-white transition-all duration-500"
@@ -6169,26 +6169,26 @@ function Feed() {
               </div>
             </div>
 
-            <div className="h-16 px-4 flex items-center justify-between">
-              <div className="flex items-center gap-3 min-w-0">
+            <div className="absolute inset-x-0 top-6 z-30 flex h-16 items-center justify-between px-4">
+              <div className="flex min-w-0 items-center gap-3">
                 <img
                   src={mediaUrl(selectedStory.author?.profileImage) || dp}
                   alt={selectedStory.author?.userName || "story"}
-                  className="w-11 h-11 rounded-full object-cover border border-white/10"
+                  className="h-10 w-10 rounded-full border border-white/20 object-cover shadow-lg"
                   onError={(event) => {
                     event.currentTarget.src = dp;
                   }}
                 />
                 <div className="min-w-0">
-                  <p className="flex min-w-0 items-center gap-1 text-white text-[15px] font-semibold">
+                  <p className="flex min-w-0 items-center gap-1 text-[14px] font-semibold text-white drop-shadow">
                     <span className="truncate">{selectedStory.author?.userName || "Story"}</span>
                     {selectedStory.author?.isVerified ? <VerifiedBadge /> : null}
-                    <span className="ml-2 text-gray-400 font-normal">
+                    <span className="ml-1 font-normal text-white/70">
                       {getStoryAgeLabel(selectedStory, storyClock)}
                     </span>
                   </p>
-                  <p className="text-gray-300 text-xs truncate">
-                    Story · {getStoryTimeLeftLabel(selectedStory, storyClock)}
+                  <p className="truncate text-xs text-white/70">
+                    {getStoryTimeLeftLabel(selectedStory, storyClock)}
                   </p>
                 </div>
               </div>
@@ -6196,7 +6196,7 @@ function Feed() {
               <div className="relative flex items-center gap-1">
                 <button
                   type="button"
-                  className="w-9 h-9 rounded-full text-gray-300 hover:bg-white/10 flex items-center justify-center"
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-black/25 text-white backdrop-blur hover:bg-white/10"
                   aria-label="Story options"
                   aria-expanded={storyMenuOpen}
                   onClick={(event) => {
@@ -6209,7 +6209,7 @@ function Feed() {
 
                 {storyMenuOpen ? (
                   <div
-                    className="absolute right-0 top-11 z-20 w-44 overflow-hidden rounded-lg border border-white/10 bg-[#171717] shadow-2xl"
+                    className="absolute right-0 top-11 z-40 w-44 overflow-hidden rounded-xl border border-white/10 bg-[#080b16] shadow-2xl"
                     onClick={(event) => event.stopPropagation()}
                   >
                     {selectedStory.author?._id === userData?._id ? (
@@ -6231,11 +6231,19 @@ function Feed() {
                   </button>
                   </div>
                 ) : null}
+                <button
+                  type="button"
+                  onClick={closeStoryViewer}
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-black/25 text-white backdrop-blur hover:bg-white/10"
+                  aria-label="Close story"
+                >
+                  <FiX />
+                </button>
               </div>
             </div>
 
             <div
-              className="min-h-0 flex-1 flex items-center justify-center px-0 sm:px-6 py-4"
+              className="flex min-h-0 flex-1 items-center justify-center bg-black"
               onClick={(event) => {
                 event.stopPropagation();
 
@@ -6258,7 +6266,7 @@ function Feed() {
               {storyMediaError || !selectedStory.media ? (
                 <div
                   data-story-media
-                  className="w-full max-h-[calc(100vh-190px)] min-h-[320px] flex flex-col items-center justify-center gap-3 bg-black/30 text-center px-8"
+                  className="flex h-full w-full flex-col items-center justify-center gap-3 bg-[#090c1f] px-8 text-center"
                 >
                   <FiImage className="text-4xl text-gray-500" />
                   <div>
@@ -6277,7 +6285,7 @@ function Feed() {
                   data-story-media
                   onLoadedData={() => setStoryMediaError(false)}
                   onError={() => setStoryMediaError(true)}
-                  className="w-full max-h-[calc(100vh-190px)] bg-black object-contain"
+                  className="h-full w-full bg-black object-cover"
                 />
               ) : (
                 <img
@@ -6286,14 +6294,14 @@ function Feed() {
                   data-story-media
                   onLoad={() => setStoryMediaError(false)}
                   onError={() => setStoryMediaError(true)}
-                  className="w-full max-h-[calc(100vh-190px)] object-contain"
+                  className="h-full w-full object-cover"
                 />
               )}
             </div>
 
-            <div className="px-4 pb-6 pt-2">
+            <div className="absolute inset-x-0 bottom-0 z-30 bg-gradient-to-t from-black/85 via-black/35 to-transparent px-4 pb-4 pt-16">
               {storyReplyStatus ? (
-                <p className="mb-2 px-1 text-xs text-gray-400">{storyReplyStatus}</p>
+                <p className="mb-2 px-1 text-xs text-white/75">{storyReplyStatus}</p>
               ) : null}
 
               <div className="flex items-center gap-3">
@@ -6307,14 +6315,14 @@ function Feed() {
                         : "Send message"
                     }
                     disabled={selectedStory.author?._id === userData?._id || storyReplySending}
-                    className="w-full h-12 rounded-full bg-transparent border border-white/40 px-5 text-white outline-none placeholder:text-white disabled:text-gray-500 disabled:placeholder:text-gray-500"
+                    className="h-11 w-full rounded-full border border-white/35 bg-black/25 px-5 text-sm text-white outline-none backdrop-blur placeholder:text-white disabled:text-white/50 disabled:placeholder:text-white/50"
                     maxLength={500}
                   />
                 </form>
                 <button
                   type="button"
                   onClick={toggleStoryLike}
-                  className={`w-11 h-11 rounded-full flex items-center justify-center text-3xl ${
+                  className={`flex h-11 w-11 items-center justify-center rounded-full text-2xl drop-shadow ${
                     selectedStoryLiked ? "text-red-500" : "text-white"
                   }`}
                   aria-label="Like story"
@@ -6328,7 +6336,7 @@ function Feed() {
                       handleStoryReplySubmit({ preventDefault: () => {} });
                     }
                   }}
-                  className="w-11 h-11 rounded-full flex items-center justify-center text-3xl text-white"
+                  className="flex h-11 w-11 items-center justify-center rounded-full text-2xl text-white drop-shadow"
                   aria-label="Send story reply"
                 >
                   {storyReplyText.trim() ? <FiSend /> : <FiMessageCircle />}

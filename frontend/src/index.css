@@ -707,6 +707,12 @@ body.vybe-theme-active:not(.vybe-light) .vybe-app-shell {
   z-index: 90;
 }
 
+.vybe-story-card {
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.48),
+    0 0 0 1px rgba(124, 92, 255, 0.08);
+}
+
 .vybe-feed-card:hover::before {
   opacity: 1;
   animation: vybe-soft-pulse 1.4s ease-in-out;
@@ -1412,6 +1418,12 @@ body.vybe-theme-active.vybe-light .vybe-settings-sheet > div:first-child {
     width: auto !important;
     max-height: min(70dvh, 520px) !important;
     border-radius: 22px !important;
+  }
+
+  .vybe-story-card {
+    height: min(92svh, 760px) !important;
+    max-width: min(430px, calc(100vw - 1.25rem)) !important;
+    border-radius: 26px !important;
   }
 
   .vybe-create-overlay,
