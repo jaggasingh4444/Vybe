@@ -6623,17 +6623,27 @@ function Feed() {
           <div className="vybe-settings-sheet w-full sm:max-w-[420px] max-h-[92svh] overflow-y-auto bg-[#050505] border-t sm:border border-gray-800 rounded-t-2xl sm:rounded-lg text-white">
             <div className="h-14 px-4 flex items-center justify-between border-b border-gray-900">
               <h2 className="font-semibold">Settings</h2>
-              <button
-                type="button"
-                onClick={() => setMobileSettingsOpen(false)}
-                className="w-9 h-9 flex items-center justify-center text-gray-400"
-                aria-label="Close mobile settings"
-              >
-                <FiX />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="submit"
+                  form="vybe-mobile-profile-form"
+                  disabled={mobileSaving}
+                  className="vybe-settings-header-save"
+                >
+                  {mobileSaving ? "Saving" : "Save"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMobileSettingsOpen(false)}
+                  className="w-9 h-9 flex items-center justify-center text-gray-400"
+                  aria-label="Close mobile settings"
+                >
+                  <FiX />
+                </button>
+              </div>
             </div>
 
-            <form onSubmit={handleMobileSaveProfile} className="p-4 flex flex-col gap-4">
+            <form id="vybe-mobile-profile-form" onSubmit={handleMobileSaveProfile} className="p-4 flex flex-col gap-4">
               <div className="flex items-center gap-4">
                 <div className="relative w-16 h-16 rounded-full overflow-hidden bg-[#171717]">
                   <img
@@ -6813,9 +6823,9 @@ function Feed() {
                 <button
                   type="submit"
                   disabled={mobileSaving}
-                  className="h-11 w-full rounded-md bg-white text-black font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+                  className="vybe-settings-save-button h-12 w-full font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
                 >
-                  <FiSave /> {mobileSaving ? "Saving" : "Save"}
+                  <FiSave /> {mobileSaving ? "Saving changes" : "Save changes"}
                 </button>
               </div>
             </form>

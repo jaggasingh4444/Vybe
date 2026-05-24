@@ -7,6 +7,7 @@ import SignUp from "./pages/SignUp";
 import SignIn from "./pages/SignIn";
 import Home from "./pages/Home";
 import ForgotPassword from "./pages/ForgotPassword";
+import logo from "./assets/logo.png";
 
 import useGetCurrentUser from "./hooks/getCurrentUser";
 import useGetSuggestedUsers from "./hooks/getSuggestedUsers";
@@ -35,8 +36,12 @@ function App() {
   // ⏳ Wait until auth check finishes
   if (loadingUser || !isAuthChecked) {
     return (
-      <div className="w-full h-screen flex items-center justify-center bg-black">
-        <p className="text-white text-xl">Checking authentication...</p>
+      <div className="vybe-auth-loading-screen">
+        <div className="vybe-auth-loading-card" aria-label="Loading VYBE">
+          <span className="vybe-auth-loading-ring" />
+          <img src={logo} alt="VYBE" className="vybe-auth-loading-logo" />
+          <span className="vybe-auth-loading-dot" />
+        </div>
       </div>
     );
   }
