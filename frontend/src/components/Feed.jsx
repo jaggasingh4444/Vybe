@@ -232,8 +232,17 @@ const getStoryViewProgressPercent = (startedAt, now = Date.now(), durationMs = S
   const progress = ((now - startedAt) / durationMs) * 100;
   return Math.max(0, Math.min(100, progress));
 };
-const getStoryViewDurationMs = (story) =>
-  story?.mediaType === "video" ? MAX_STORY_VIDEO_DURATION_MS : STORY_IMAGE_VIEW_DURATION_MS;
+const getStoryViewDurationMs = (story, videoDurations = {}) => {
+  if (story?.mediaType !== "video") return STORY_IMAGE_VIEW_DURATION_MS;
+
+  const storyId = getIdString(story?._id);
+  const loadedDurationMs = Number(videoDurations[storyId]);
+  if (Number.isFinite(loadedDurationMs) && loadedDurationMs > 0) {
+    return Math.max(1000, Math.min(loadedDurationMs, MAX_STORY_VIDEO_DURATION_MS));
+  }
+
+  return MAX_STORY_VIDEO_DURATION_MS;
+};
 const getStoryAuthorId = (story) => {
   const author = story?.author;
   if (!author) return "";
@@ -688,6 +697,7 @@ function Feed() {
   const [storyViewStartedAt, setStoryViewStartedAt] = useState(0);
   const [storyViewerClock, setStoryViewerClock] = useState(Date.now());
   const [storyPlaybackDurationMs, setStoryPlaybackDurationMs] = useState(STORY_IMAGE_VIEW_DURATION_MS);
+  const [storyVideoDurations, setStoryVideoDurations] = useState({});
   const [storyReplyText, setStoryReplyText] = useState("");
   const [storyReplyStatus, setStoryReplyStatus] = useState("");
   const [storyReplySending, setStoryReplySending] = useState(false);
@@ -823,6 +833,7 @@ function Feed() {
   const pendingContentDeleteIdsRef = useRef(new Set());
   const pendingCommentDeleteIdsRef = useRef(new Set());
   const selectedStoryRef = useRef(null);
+  const storyVideoDurationsRef = useRef({});
   const selectedMobileChatRef = useRef(null);
   const mobileMessagesRef = useRef([]);
   const previousMobileChatIdRef = useRef("");
@@ -1240,6 +1251,10 @@ function Feed() {
   useEffect(() => {
     selectedStoryRef.current = selectedStory;
   }, [selectedStory]);
+
+  useEffect(() => {
+    storyVideoDurationsRef.current = storyVideoDurations;
+  }, [storyVideoDurations]);
 
   useEffect(() => {
     onlineUserIdsRef.current = onlineUserIds;
@@ -2218,6 +2233,31 @@ function Feed() {
     window.location.assign("/forgot-password");
   };
 
+  const rememberStoryVideoDuration = useCallback((story, durationSeconds) => {
+    const storyId = getIdString(story?._id);
+    const durationMs = Number(durationSeconds) * 1000;
+    if (!storyId || !Number.isFinite(durationMs) || durationMs <= 0) return;
+
+    const nextDurationMs = Math.max(1000, Math.min(durationMs, MAX_STORY_VIDEO_DURATION_MS));
+    setStoryVideoDurations((currentDurations) => {
+      const previousDurationMs = Number(currentDurations[storyId]);
+      if (Number.isFinite(previousDurationMs) && Math.abs(previousDurationMs - nextDurationMs) < 100) {
+        return currentDurations;
+      }
+
+      const nextDurations = {
+        ...currentDurations,
+        [storyId]: nextDurationMs,
+      };
+      storyVideoDurationsRef.current = nextDurations;
+      return nextDurations;
+    });
+
+    if (getIdString(selectedStoryRef.current?._id) === storyId) {
+      setStoryPlaybackDurationMs(nextDurationMs);
+    }
+  }, []);
+
   const openStory = useCallback(async (story) => {
     if (selectedStoryRef.current?._id === story?._id) return;
 
@@ -2236,7 +2276,7 @@ function Feed() {
     setStoryMenuOpen(false);
     setStoryViewStartedAt(Date.now());
     setStoryViewerClock(Date.now());
-    setStoryPlaybackDurationMs(getStoryViewDurationMs(story));
+    setStoryPlaybackDurationMs(getStoryViewDurationMs(story, storyVideoDurationsRef.current));
     setStoryReplyText("");
     setStoryReplyStatus("");
 
@@ -2261,7 +2301,7 @@ function Feed() {
 
       selectedStoryRef.current = data;
       setSelectedStory(data);
-      setStoryPlaybackDurationMs(getStoryViewDurationMs(data));
+      setStoryPlaybackDurationMs(getStoryViewDurationMs(data, storyVideoDurationsRef.current));
       setStories((currentStories) =>
         currentStories.map((item) => (item._id === data._id ? data : item))
       );
@@ -6295,7 +6335,7 @@ function Feed() {
                       className="h-[3px] flex-1 overflow-hidden rounded-full bg-white/30"
                     >
                       <div
-                        className="h-full rounded-full bg-white transition-all duration-500"
+                        className="h-full rounded-full bg-white transition-[width] duration-100 ease-linear"
                         style={{ width: `${segmentProgress}%` }}
                       />
                     </div>
@@ -6421,12 +6461,7 @@ function Feed() {
                   playsInline
                   data-story-media
                   onLoadedMetadata={(event) => {
-                    const durationMs = Number.isFinite(event.currentTarget.duration)
-                      ? Math.min(event.currentTarget.duration * 1000, MAX_STORY_VIDEO_DURATION_MS)
-                      : MAX_STORY_VIDEO_DURATION_MS;
-                    setStoryPlaybackDurationMs(Math.max(1000, durationMs));
-                    setStoryViewStartedAt(Date.now());
-                    setStoryViewerClock(Date.now());
+                    rememberStoryVideoDuration(selectedStory, event.currentTarget.duration);
                     setStoryMediaError(false);
                   }}
                   onLoadedData={() => setStoryMediaError(false)}
