@@ -19,7 +19,8 @@ const CHAT_MEDIA_UPLOAD_TIMEOUT_MS = 120000;
 const EMOJI_OPTIONS = ["😀", "😂", "😍", "🔥", "❤️", "🙌", "👏", "😎", "🥹", "👍", "✨", "💯"];
 const REACTION_OPTIONS = ["❤️", "😂", "🔥", "👏", "😮", "😢", "👍"];
 const STORY_EXPIRY_MS = 24 * 60 * 60 * 1000;
-const STORY_VIEW_DURATION_MS = 7000;
+const STORY_IMAGE_VIEW_DURATION_MS = 7000;
+const STORY_VIDEO_VIEW_DURATION_MS = 60 * 1000;
 const STATUS_AUTO_DISMISS_MS = 1800;
 const CAPTION_LIMIT = 500;
 const TYPING_IDLE_MS = 1400;
@@ -224,12 +225,14 @@ const getStoryTimeLeftLabel = (story, now = Date.now()) => {
   const minutesLeft = Math.max(1, Math.ceil(millisecondsLeft / (60 * 1000)));
   return `${minutesLeft}m left`;
 };
-const getStoryViewProgressPercent = (startedAt, now = Date.now()) => {
+const getStoryViewProgressPercent = (startedAt, now = Date.now(), durationMs = STORY_IMAGE_VIEW_DURATION_MS) => {
   if (!startedAt) return 0;
 
-  const progress = ((now - startedAt) / STORY_VIEW_DURATION_MS) * 100;
+  const progress = ((now - startedAt) / durationMs) * 100;
   return Math.max(0, Math.min(100, progress));
 };
+const getStoryViewDurationMs = (story) =>
+  story?.mediaType === "video" ? STORY_VIDEO_VIEW_DURATION_MS : STORY_IMAGE_VIEW_DURATION_MS;
 const getStoryAuthorId = (story) => {
   const author = story?.author;
   if (!author) return "";
@@ -793,8 +796,10 @@ function Feed() {
   }, [userData?._id]);
   const pendingContentDeleteIdsRef = useRef(new Set());
   const pendingCommentDeleteIdsRef = useRef(new Set());
+  const selectedStoryRef = useRef(null);
   const selectedMobileChatRef = useRef(null);
   const mobileMessagesRef = useRef([]);
+  const previousMobileChatIdRef = useRef("");
   const feedSearchInputRef = useRef(null);
   const mobileMessageSyncingRef = useRef(false);
   const mobileChatUsersSyncingRef = useRef(false);
@@ -1133,6 +1138,7 @@ function Feed() {
   }, [selectedFile]);
 
   const closeStoryViewer = useCallback(() => {
+    selectedStoryRef.current = null;
     setSelectedStory(null);
     setStoryMediaError(false);
     setStoryMenuOpen(false);
@@ -1201,6 +1207,10 @@ function Feed() {
   useEffect(() => {
     selectedMobileChatRef.current = selectedMobileChat;
   }, [selectedMobileChat]);
+
+  useEffect(() => {
+    selectedStoryRef.current = selectedStory;
+  }, [selectedStory]);
 
   useEffect(() => {
     onlineUserIdsRef.current = onlineUserIds;
@@ -1801,11 +1811,23 @@ function Feed() {
     const messagesList = mobileMessagesListRef.current;
     if (!messagesList) return;
 
+    const activeChatId = selectedMobileChat?._id || "";
+    const openedNewChat = previousMobileChatIdRef.current !== activeChatId;
+    const latestMessage = mobileMessages[mobileMessages.length - 1];
+    const latestMessageFromMe = getMessageSenderId(latestMessage) === userData?._id;
+    const distanceFromBottom =
+      messagesList.scrollHeight - messagesList.scrollTop - messagesList.clientHeight;
+    const userIsNearBottom = distanceFromBottom < 140;
+
+    previousMobileChatIdRef.current = activeChatId;
+
+    if (!openedNewChat && !latestMessageFromMe && !userIsNearBottom) return;
+
     messagesList.scrollTo({
       top: messagesList.scrollHeight,
       behavior: "auto",
     });
-  }, [mobileMessages, selectedMobileChat?._id, selectedMobileChatTyping]);
+  }, [mobileMessages, selectedMobileChat?._id, selectedMobileChatTyping, userData?._id]);
 
   useEffect(() => {
     stopMobileOutgoingTyping();
@@ -2100,14 +2122,18 @@ function Feed() {
   };
 
   const openStory = useCallback(async (story) => {
+    if (selectedStoryRef.current?._id === story?._id) return;
+
     if (!isStoryActive(story)) {
       setStories((currentStories) => currentStories.filter((item) => item._id !== story._id));
+      selectedStoryRef.current = null;
       setSelectedStory(null);
       setStoryMenuOpen(false);
       setMessage("This story has expired.");
       return;
     }
 
+    selectedStoryRef.current = story;
     setSelectedStory(story);
     setStoryMediaError(false);
     setStoryMenuOpen(false);
@@ -2124,20 +2150,26 @@ function Feed() {
       });
 
       const data = await res.json();
+      if (selectedStoryRef.current?._id !== story._id) return;
+
       if (!res.ok) {
         setStories((currentStories) => currentStories.filter((item) => item._id !== story._id));
+        selectedStoryRef.current = null;
         setSelectedStory(null);
         setStoryMenuOpen(false);
         setMessage(data.message || "Story is no longer available.");
         return;
       }
 
+      selectedStoryRef.current = data;
       setSelectedStory(data);
       setStories((currentStories) =>
         currentStories.map((item) => (item._id === data._id ? data : item))
       );
     } catch {
-      setSelectedStory(story);
+      if (selectedStoryRef.current?._id === story._id) {
+        setSelectedStory(story);
+      }
     }
   }, []);
 
@@ -2266,7 +2298,7 @@ function Feed() {
     if (storyReplyText.trim()) return;
 
     const elapsed = storyViewerClock - storyViewStartedAt;
-    if (elapsed >= STORY_VIEW_DURATION_MS) {
+    if (elapsed >= getStoryViewDurationMs(selectedStory)) {
       openStoryByOffset(1);
     }
   }, [activeStories, closeStoryViewer, openStoryByOffset, selectedStory, storyReplyText, storyViewStartedAt, storyViewerClock]);
@@ -3720,7 +3752,11 @@ function Feed() {
         : [];
   const selectedStoryIndexInStack = selectedStoryGroupIndex >= 0 ? selectedStoryGroupIndex : 0;
   const selectedStoryProgress = selectedStory
-    ? getStoryViewProgressPercent(storyViewStartedAt, storyViewerClock)
+    ? getStoryViewProgressPercent(
+        storyViewStartedAt,
+        storyViewerClock,
+        getStoryViewDurationMs(selectedStory)
+      )
     : 0;
   const selectedStoryLiked = selectedStory
     ? likedStoryIds.has(selectedStory._id)

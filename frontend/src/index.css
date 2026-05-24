@@ -1420,9 +1420,15 @@ body.vybe-theme-active.vybe-light .vybe-settings-sheet > div:first-child {
     border-radius: 22px !important;
   }
 
+  [data-vybe-story-viewer] {
+    align-items: flex-start !important;
+    padding-top: max(0.5rem, env(safe-area-inset-top)) !important;
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom)) !important;
+  }
+
   .vybe-story-card {
-    height: min(92svh, 760px) !important;
-    max-width: min(430px, calc(100vw - 1.25rem)) !important;
+    height: calc(100svh - 1rem) !important;
+    max-width: min(430px, calc(100vw - 0.75rem)) !important;
     border-radius: 26px !important;
   }
 
