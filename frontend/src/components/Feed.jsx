@@ -68,6 +68,7 @@ const getNotificationActionLabel = (notification) => {
     case "follow":
       return "followed you";
     case "like":
+      if (contentLabel === "story") return "reacted to your story";
       return `liked your ${contentLabel}`;
     case "comment":
       return `commented on your ${contentLabel}`;
@@ -717,7 +718,10 @@ function Feed() {
   const [pendingCommentDeleteIds, setPendingCommentDeleteIds] = useState(() => new Set());
   const [notifications, setNotifications] = useState([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notificationActionMenuId, setNotificationActionMenuId] = useState("");
+  const [notificationDeleteConfirmId, setNotificationDeleteConfirmId] = useState("");
   const [deletingNotificationIds, setDeletingNotificationIds] = useState(() => new Set());
+  const [pendingStoryReactionIds, setPendingStoryReactionIds] = useState(() => new Set());
   const [mobileChatUsers, setMobileChatUsers] = useState([]);
   const [mobileChatSearch, setMobileChatSearch] = useState("");
   const [mobileChatSearchResults, setMobileChatSearchResults] = useState([]);
@@ -1327,6 +1331,8 @@ function Feed() {
     const closeNotificationsOnOutsideClick = (event) => {
       if (notificationMenuRef.current?.contains(event.target)) return;
       setNotificationsOpen(false);
+      setNotificationActionMenuId("");
+      setNotificationDeleteConfirmId("");
     };
 
     document.addEventListener("pointerdown", closeNotificationsOnOutsideClick);
@@ -2351,18 +2357,96 @@ function Feed() {
     }
   };
 
-  const toggleStoryLike = () => {
-    if (!selectedStory?._id) return;
+  const toggleStoryLike = async () => {
+    const storyId = selectedStory?._id;
+    const currentUserId = userData?._id;
+    if (!storyId || !currentUserId || pendingStoryReactionIds.has(storyId)) return;
 
-    setLikedStoryIds((current) => {
+    const nextLiked = !selectedStoryLiked;
+    const applyOptimisticReaction = (story) => {
+      if (story?._id !== storyId) return story;
+
+      const currentLikes = story.likes || [];
+      return {
+        ...story,
+        likes: nextLiked
+          ? Array.from(new Set([...currentLikes.map((id) => id.toString()), currentUserId]))
+          : currentLikes.filter((id) => id.toString() !== currentUserId),
+      };
+    };
+
+    setPendingStoryReactionIds((current) => {
       const next = new Set(current);
-      if (next.has(selectedStory._id)) {
-        next.delete(selectedStory._id);
-      } else {
-        next.add(selectedStory._id);
-      }
+      next.add(storyId);
       return next;
     });
+    setLikedStoryIds((current) => {
+      const next = new Set(current);
+      if (nextLiked) next.add(storyId);
+      else next.delete(storyId);
+      return next;
+    });
+    setSelectedStory((currentStory) => applyOptimisticReaction(currentStory));
+    setStories((currentStories) => currentStories.map((story) => applyOptimisticReaction(story)));
+
+    try {
+      const res = await fetch(apiUrl(`/api/content/stories/${storyId}/react`), {
+        method: "POST",
+        credentials: "include",
+        headers: getTabAuthHeaders(),
+      });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message || "Story reaction failed");
+
+      const serverLiked = Boolean(
+        data.likes?.some((id) => id.toString() === currentUserId)
+      );
+      setSelectedStory((currentStory) => (currentStory?._id === storyId ? data : currentStory));
+      setStories((currentStories) =>
+        currentStories.map((story) => (story._id === storyId ? data : story))
+      );
+      setLikedStoryIds((current) => {
+        const next = new Set(current);
+        if (serverLiked) next.add(storyId);
+        else next.delete(storyId);
+        return next;
+      });
+    } catch (error) {
+      setLikedStoryIds((current) => {
+        const next = new Set(current);
+        if (nextLiked) next.delete(storyId);
+        else next.add(storyId);
+        return next;
+      });
+      setSelectedStory((currentStory) => {
+        if (currentStory?._id !== storyId) return currentStory;
+        return {
+          ...currentStory,
+          likes: nextLiked
+            ? (currentStory.likes || []).filter((id) => id.toString() !== currentUserId)
+            : Array.from(new Set([...(currentStory.likes || []).map((id) => id.toString()), currentUserId])),
+        };
+      });
+      setStories((currentStories) =>
+        currentStories.map((story) => {
+          if (story._id !== storyId) return story;
+          return {
+            ...story,
+            likes: nextLiked
+              ? (story.likes || []).filter((id) => id.toString() !== currentUserId)
+              : Array.from(new Set([...(story.likes || []).map((id) => id.toString()), currentUserId])),
+          };
+        })
+      );
+      setStoryReplyStatus(error.message || "Story reaction failed.");
+    } finally {
+      setPendingStoryReactionIds((current) => {
+        const next = new Set(current);
+        next.delete(storyId);
+        return next;
+      });
+    }
   };
 
   const openStoryByOffset = useCallback((offset) => {
@@ -3624,7 +3708,13 @@ function Feed() {
   };
 
   const markNotificationsRead = async () => {
-    setNotificationsOpen((open) => !open);
+    setNotificationsOpen((open) => {
+      if (open) {
+        setNotificationActionMenuId("");
+        setNotificationDeleteConfirmId("");
+      }
+      return !open;
+    });
     if (notificationsOpen) return;
 
     setNotifications((current) => current.map((item) => ({ ...item, read: true })));
@@ -3654,6 +3744,8 @@ function Feed() {
       setNotifications((current) =>
         current.filter((notification) => notification._id !== notificationId)
       );
+      setNotificationActionMenuId("");
+      setNotificationDeleteConfirmId("");
     } catch {
       setMessage("Unable to delete notification.");
     } finally {
@@ -3704,6 +3796,43 @@ function Feed() {
 
     const contentType = notification?.contentType;
     const contentId = getIdString(notification?.contentId);
+    if (contentType === "story" && contentId) {
+      let targetStory = stories.find((story) => story._id === contentId);
+
+      if (!targetStory) {
+        try {
+          const res = await fetch(apiUrl("/api/content/stories"), {
+            credentials: "include",
+            headers: getTabAuthHeaders(),
+          });
+          const data = await res.json();
+          if (res.ok) {
+            const activeServerStories = data.filter((story) => isStoryActive(story));
+            const serverStoryIds = new Set(activeServerStories.map((story) => story._id));
+            setStories((currentStories) => [
+              ...currentStories.filter(
+                (story) =>
+                  story._localUpload &&
+                  isStoryActive(story) &&
+                  !serverStoryIds.has(story._id)
+              ),
+              ...activeServerStories,
+            ]);
+            targetStory = activeServerStories.find((story) => story._id === contentId);
+          }
+        } catch {
+          targetStory = null;
+        }
+      }
+
+      if (targetStory) {
+        openStory(targetStory);
+      } else if (notification?.actor) {
+        openProfile(notification.actor);
+      }
+      return;
+    }
+
     if (!["post", "reel"].includes(contentType) || !contentId) {
       if (notification?.actor) openProfile(notification.actor);
       return;
@@ -3898,7 +4027,8 @@ function Feed() {
       )
     : 0;
   const selectedStoryLiked = selectedStory
-    ? likedStoryIds.has(selectedStory._id)
+    ? likedStoryIds.has(selectedStory._id) ||
+      selectedStory.likes?.some((id) => id.toString() === userData?._id)
     : false;
   const isMobileReelFeed = isMobile && activeMobileTab === "reels";
   const isMobileChatTab = isMobile && activeMobileTab === "chat";
@@ -4508,12 +4638,14 @@ function Feed() {
                           notification.type
                         );
                         const alreadyFollowingActor = actorId ? mobileFollowingIds.has(actorId) : false;
+                        const notificationMenuOpen = notificationActionMenuId === notification._id;
+                        const deleteConfirmOpen = notificationDeleteConfirmId === notification._id;
 
                         return (
                           <div
                             key={notification._id}
                             data-vybe-notification-item
-                            className="vybe-notification-item px-4 py-3 border-b border-gray-900 last:border-b-0"
+                            className="vybe-notification-item relative px-4 py-3 border-b border-gray-900 last:border-b-0"
                           >
                             <div className="flex items-center gap-3">
                               <button
@@ -4557,19 +4689,66 @@ function Feed() {
                                       : "Follow Back"}
                                 </button>
                               ) : null}
-                              <button
-                                type="button"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  deleteNotification(notification._id);
-                                }}
-                                disabled={deletingNotificationIds.has(notification._id)}
-                                className="shrink-0 rounded-full p-2 text-gray-500 hover:bg-[#111] hover:text-red-400 disabled:opacity-50"
-                                aria-label="Delete notification"
-                                title="Delete notification"
-                              >
-                                <FiTrash2 />
-                              </button>
+                              <div className="relative shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    setNotificationActionMenuId((currentId) =>
+                                      currentId === notification._id ? "" : notification._id
+                                    );
+                                    setNotificationDeleteConfirmId("");
+                                  }}
+                                  disabled={deletingNotificationIds.has(notification._id)}
+                                  className="flex h-9 w-9 items-center justify-center rounded-full text-gray-500 hover:bg-[#111] hover:text-white disabled:opacity-50"
+                                  aria-label="Notification options"
+                                  aria-expanded={notificationMenuOpen}
+                                  title="Notification options"
+                                >
+                                  <FiMoreVertical />
+                                </button>
+
+                                {notificationMenuOpen ? (
+                                  <div
+                                    className="absolute right-0 top-10 z-30 w-56 overflow-hidden rounded-2xl border border-white/10 bg-[#090c1f] p-2 text-sm shadow-2xl"
+                                    onClick={(event) => event.stopPropagation()}
+                                  >
+                                    {deleteConfirmOpen ? (
+                                      <div className="space-y-3 p-2">
+                                        <p className="text-sm font-semibold text-white">
+                                          Delete this notification?
+                                        </p>
+                                        <div className="grid grid-cols-2 gap-2">
+                                          <button
+                                            type="button"
+                                            onClick={() => setNotificationDeleteConfirmId("")}
+                                            className="h-10 rounded-xl bg-white/10 text-xs font-semibold text-white hover:bg-white/15"
+                                          >
+                                            Cancel
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => deleteNotification(notification._id)}
+                                            disabled={deletingNotificationIds.has(notification._id)}
+                                            className="h-10 rounded-xl bg-red-500/15 text-xs font-semibold text-red-200 hover:bg-red-500/25 disabled:opacity-50"
+                                          >
+                                            {deletingNotificationIds.has(notification._id) ? "Deleting" : "Delete"}
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => setNotificationDeleteConfirmId(notification._id)}
+                                        className="flex h-11 w-full items-center gap-2 rounded-xl px-3 text-left font-semibold text-red-200 hover:bg-red-500/10"
+                                      >
+                                        <FiTrash2 />
+                                        Delete notification
+                                      </button>
+                                    )}
+                                  </div>
+                                ) : null}
+                              </div>
                             </div>
                           </div>
                         );
@@ -6508,7 +6687,8 @@ function Feed() {
                 <button
                   type="button"
                   onClick={toggleStoryLike}
-                  className={`flex h-11 w-11 items-center justify-center rounded-full text-2xl drop-shadow ${
+                  disabled={pendingStoryReactionIds.has(selectedStory._id)}
+                  className={`flex h-11 w-11 items-center justify-center rounded-full text-2xl drop-shadow disabled:opacity-60 ${
                     selectedStoryLiked ? "text-red-500" : "text-white"
                   }`}
                   aria-label="Like story"

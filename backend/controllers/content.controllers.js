@@ -42,6 +42,7 @@ const serializeStory = (story) => ({
   mediaType: story.mediaType,
   media: story.media,
   viewers: story.viewers || [],
+  likes: story.likes || [],
   createdAt: story.createdAt,
 });
 
@@ -404,6 +405,56 @@ export const viewStory = async (req, res) => {
     return res.status(200).json(serializeStory(story));
   } catch (error) {
     return res.status(500).json({ message: `view story error ${error.message}` });
+  }
+};
+
+export const toggleStoryReaction = async (req, res) => {
+  try {
+    await cleanupExpiredStoriesAndBroadcast();
+    const visibleAuthorIds = await getVisibleStoryAuthorIds(req.userId);
+
+    const story = await Story.findOne({
+      _id: req.params.storyId,
+      createdAt: { $gt: getActiveStoryCutoff() },
+      author: { $in: visibleAuthorIds },
+    });
+
+    if (!story) {
+      return res.status(404).json({ message: "Story expired or not found" });
+    }
+
+    const alreadyReacted = (story.likes || []).some(
+      (userId) => userId.toString() === req.userId
+    );
+
+    if (alreadyReacted) {
+      story.likes = (story.likes || []).filter((userId) => userId.toString() !== req.userId);
+    } else {
+      story.likes = [...(story.likes || []), req.userId];
+    }
+
+    await story.save();
+
+    const populatedStory = await Story.findById(story._id).populate(
+      "author",
+      "name userName profileImage isVerified"
+    );
+
+    if (!alreadyReacted) {
+      await createNotification({
+        recipient: story.author,
+        actor: req.userId,
+        type: "like",
+        contentType: "story",
+        contentId: story._id,
+      });
+    }
+
+    broadcastContentUpdate("story:update", { storyId: story._id });
+
+    return res.status(200).json(serializeStory(populatedStory));
+  } catch (error) {
+    return res.status(500).json({ message: `story reaction error ${error.message}` });
   }
 };
 

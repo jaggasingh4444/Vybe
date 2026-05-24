@@ -20,6 +20,7 @@ import {
   markNotificationsRead,
   notificationEvents,
   toggleLike,
+  toggleStoryReaction,
   viewStory,
   deleteComment,
 } from "../controllers/content.controllers.js";
@@ -90,6 +91,7 @@ contentRouter.post("/reels", isAuth, upload.single("media"), createReel);
 contentRouter.post("/upload-media", isAuth, upload.single("media"), uploadMediaToS3);
 contentRouter.post("/stories", isAuth, upload.single("media"), createStory);
 contentRouter.post("/stories/:storyId/view", isAuth, viewStory);
+contentRouter.post("/stories/:storyId/react", isAuth, toggleStoryReaction);
 contentRouter.delete("/stories/:storyId", isAuth, deleteStory);
 contentRouter.get("/:type/:id", isAuth, getContentById);
 contentRouter.post("/:type/:id/like", isAuth, toggleLike);
