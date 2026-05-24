@@ -10,6 +10,12 @@ import {
   saveBinaryMedia,
   saveDataUrlMedia,
 } from "../utils/mediaStorage.js";
+import {
+  emitSocketChatEvent,
+  getSocketOnlineUserIds,
+  isSocketUserOnline,
+  setSocketPresenceHandlers,
+} from "../utils/chatSocket.js";
 
 const chatClients = new Map();
 
@@ -205,7 +211,12 @@ const buildReplySnapshot = async (messageId, userId) => {
   };
 };
 
-const getOnlineUserIds = () => [...chatClients.keys()];
+const getOnlineUserIds = () => [...new Set([...chatClients.keys(), ...getSocketOnlineUserIds()])];
+
+const isRealtimeUserOnline = (userId) => {
+  const key = getIdString(userId);
+  return Boolean(key && (chatClients.has(key) || isSocketUserOnline(key)));
+};
 
 const addClient = (userId, res) => {
   const key = userId.toString();
@@ -227,6 +238,8 @@ const removeClient = (userId, res) => {
 
 const sendToUser = (userId, payload) => {
   const key = userId.toString();
+  emitSocketChatEvent(key, payload);
+
   const clients = chatClients.get(key);
   if (!clients) return;
 
@@ -294,6 +307,12 @@ const notifyDeliveredMessages = async (receiverId) => {
     sendToUser(receiverId, payload);
   }
 };
+
+setSocketPresenceHandlers({
+  getOnlineUserIds,
+  handlePresenceChange: broadcastPresence,
+  handleUserConnected: notifyDeliveredMessages,
+});
 
 const markConversationMessagesRead = async (readerId, senderId) => {
   const unreadMessages = await Message.find({
@@ -439,7 +458,7 @@ export const getChatUsers = async (req, res) => {
         return {
           ...user.toObject(),
           unreadCount: unreadCountMap.get(userId) || 0,
-          isOnline: chatClients.has(userId),
+          isOnline: isRealtimeUserOnline(userId),
           isConnected: connected,
           pendingConnection: !connected,
           latestMessage: latestMessage
@@ -511,7 +530,7 @@ export const searchConnectedChatUsers = async (req, res) => {
       users.map((user) => ({
         ...user.toObject(),
         unreadCount: 0,
-        isOnline: chatClients.has(user._id.toString()),
+        isOnline: isRealtimeUserOnline(user._id),
       }))
     );
   } catch (error) {
@@ -618,7 +637,7 @@ export const sendMessage = async (req, res) => {
       return res.status(404).json({ message: "Receiver not found" });
     }
 
-    const receiverOnline = chatClients.has(receiverId.toString());
+    const receiverOnline = isRealtimeUserOnline(receiverId);
     const deliveredAt = receiverOnline ? new Date() : undefined;
     const storedAttachments = await Promise.all(
       attachments.map(async (attachment) => ({

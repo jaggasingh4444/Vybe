@@ -8,6 +8,7 @@ import { logout, setUserData } from "../redux/userSlice";
 import { getTabAuthHeaders, markTabLoggedOut, withTabAuth } from "../utils/tabAuth";
 import { downloadMediaFile } from "../utils/mediaDownload";
 import { useThemePreference } from "../utils/theme";
+import { emitChatSocketEvent, getChatSocket } from "../utils/chatSocket";
 import AdminVerificationPanel from "./AdminVerificationPanel";
 import VerifiedBadge from "./VerifiedBadge";
 
@@ -964,6 +965,8 @@ function Feed() {
   const sendMobileTypingState = useCallback(async (receiverId, typing) => {
     if (!receiverId || !userData?._id || receiverId === userData._id) return;
 
+    emitChatSocketEvent("typing:update", { receiverId, typing });
+
     try {
       await fetch(apiUrl(`/api/chat/${receiverId}/typing`), {
         method: "POST",
@@ -1635,13 +1638,12 @@ function Feed() {
   useEffect(() => {
     if (!userData?._id || !isMobile) return;
 
-    const events = new EventSource(withTabAuth(apiUrl("/api/chat/events")), {
-      withCredentials: true,
-    });
+    let fallbackEvents = null;
+    let fallbackStarted = false;
+    let fallbackTimer = null;
 
-    events.onmessage = (event) => {
+    const handleRealtimeData = (data) => {
       try {
-        const data = JSON.parse(event.data);
         if (data.type === "connected" || data.type === "presence:update") {
           setOnlineUserIds(new Set(data.onlineUserIds || []));
           return;
@@ -1729,11 +1731,68 @@ function Feed() {
       }
     };
 
-    events.onerror = () => {
-      fetchMobileChatUsers();
+    const startFallbackEvents = () => {
+      if (fallbackStarted) return;
+
+      fallbackStarted = true;
+      fallbackEvents = new EventSource(withTabAuth(apiUrl("/api/chat/events")), {
+        withCredentials: true,
+      });
+
+      fallbackEvents.onmessage = (event) => {
+        try {
+          handleRealtimeData(JSON.parse(event.data));
+        } catch {
+          fetchMobileChatUsers();
+        }
+      };
+
+      fallbackEvents.onerror = () => {
+        fetchMobileChatUsers();
+      };
     };
 
-    return () => events.close();
+    const socket = getChatSocket();
+    if (!socket) {
+      startFallbackEvents();
+      return () => fallbackEvents?.close();
+    }
+
+    const handleSocketEvent = (data) => handleRealtimeData(data);
+    const handleSocketConnect = () => {
+      fallbackEvents?.close();
+      fallbackEvents = null;
+      fallbackStarted = false;
+      socket.emit("presence:sync");
+    };
+    const handleSocketError = () => {
+      fetchMobileChatUsers();
+      if (!socket.connected) {
+        startFallbackEvents();
+      }
+    };
+
+    socket.on("chat:event", handleSocketEvent);
+    socket.on("connect", handleSocketConnect);
+    socket.on("connect_error", handleSocketError);
+    socket.on("disconnect", handleSocketError);
+
+    if (socket.connected) {
+      socket.emit("presence:sync");
+    } else {
+      fallbackTimer = window.setTimeout(() => {
+        if (!socket.connected) startFallbackEvents();
+      }, 1800);
+    }
+
+    return () => {
+      if (fallbackTimer) window.clearTimeout(fallbackTimer);
+      fallbackEvents?.close();
+      socket.off("chat:event", handleSocketEvent);
+      socket.off("connect", handleSocketConnect);
+      socket.off("connect_error", handleSocketError);
+      socket.off("disconnect", handleSocketError);
+    };
   }, [isMobile, markMobileOpenChatRead, setMobileTypingIndicator, syncMobileChatUserFromMessage, userData?._id]);
 
   useEffect(() => {
@@ -1753,7 +1812,7 @@ function Feed() {
     };
 
     const firstSync = window.setTimeout(syncOpenChat, 250);
-    const interval = window.setInterval(syncOpenChat, 700);
+    const interval = window.setInterval(syncOpenChat, 5000);
 
     return () => {
       stopped = true;
@@ -1777,7 +1836,7 @@ function Feed() {
     };
 
     const firstSync = window.setTimeout(syncMobileChatList, 250);
-    const interval = window.setInterval(syncMobileChatList, 1000);
+    const interval = window.setInterval(syncMobileChatList, 5000);
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         syncMobileChatList();

@@ -6,6 +6,7 @@ import { setSuggestedUsers, setUserData } from "../redux/userSlice";
 import { FiCheck, FiChevronLeft, FiChevronRight, FiDownload, FiImage, FiMessageCircle, FiMoreVertical, FiSearch, FiSend, FiSmile, FiVideo, FiX } from "react-icons/fi";
 import { getTabAuthHeaders, withTabAuth } from "../utils/tabAuth";
 import { downloadMediaFile } from "../utils/mediaDownload";
+import { emitChatSocketEvent, getChatSocket } from "../utils/chatSocket";
 import VerifiedBadge from "./VerifiedBadge";
 
 const ONE_MB = 1024 * 1024;
@@ -446,6 +447,8 @@ function RightHome() {
   const sendTypingState = useCallback(async (receiverId, typing) => {
     if (!receiverId || !userData?._id || receiverId === userData._id) return;
 
+    emitChatSocketEvent("typing:update", { receiverId, typing });
+
     try {
       await fetch(apiUrl(`/api/chat/${receiverId}/typing`), {
         method: "POST",
@@ -722,13 +725,12 @@ function RightHome() {
 
     fetchChatUsers();
 
-    const events = new EventSource(withTabAuth(apiUrl("/api/chat/events")), {
-      withCredentials: true,
-    });
+    let fallbackEvents = null;
+    let fallbackStarted = false;
+    let fallbackTimer = null;
 
-    events.onmessage = (event) => {
+    const handleRealtimeData = (data) => {
       try {
-        const data = JSON.parse(event.data);
         if (data.type === "connected" || data.type === "presence:update") {
           setOnlineUserIds(new Set(data.onlineUserIds || []));
           return;
@@ -810,11 +812,68 @@ function RightHome() {
       }
     };
 
-    events.onerror = () => {
-      fetchChatUsers();
+    const startFallbackEvents = () => {
+      if (fallbackStarted) return;
+
+      fallbackStarted = true;
+      fallbackEvents = new EventSource(withTabAuth(apiUrl("/api/chat/events")), {
+        withCredentials: true,
+      });
+
+      fallbackEvents.onmessage = (event) => {
+        try {
+          handleRealtimeData(JSON.parse(event.data));
+        } catch {
+          fetchChatUsers();
+        }
+      };
+
+      fallbackEvents.onerror = () => {
+        fetchChatUsers();
+      };
     };
 
-    return () => events.close();
+    const socket = getChatSocket();
+    if (!socket) {
+      startFallbackEvents();
+      return () => fallbackEvents?.close();
+    }
+
+    const handleSocketEvent = (data) => handleRealtimeData(data);
+    const handleSocketConnect = () => {
+      fallbackEvents?.close();
+      fallbackEvents = null;
+      fallbackStarted = false;
+      socket.emit("presence:sync");
+    };
+    const handleSocketError = () => {
+      fetchChatUsers();
+      if (!socket.connected) {
+        startFallbackEvents();
+      }
+    };
+
+    socket.on("chat:event", handleSocketEvent);
+    socket.on("connect", handleSocketConnect);
+    socket.on("connect_error", handleSocketError);
+    socket.on("disconnect", handleSocketError);
+
+    if (socket.connected) {
+      socket.emit("presence:sync");
+    } else {
+      fallbackTimer = window.setTimeout(() => {
+        if (!socket.connected) startFallbackEvents();
+      }, 1800);
+    }
+
+    return () => {
+      if (fallbackTimer) window.clearTimeout(fallbackTimer);
+      fallbackEvents?.close();
+      socket.off("chat:event", handleSocketEvent);
+      socket.off("connect", handleSocketConnect);
+      socket.off("connect_error", handleSocketError);
+      socket.off("disconnect", handleSocketError);
+    };
   }, [isDesktop, markOpenChatRead, setTypingIndicator, syncChatUserFromMessage, userData?._id]);
 
   useEffect(() => {
@@ -827,7 +886,7 @@ function RightHome() {
     };
 
     const firstSync = window.setTimeout(syncOpenChat, 500);
-    const interval = window.setInterval(syncOpenChat, 1200);
+    const interval = window.setInterval(syncOpenChat, 5000);
 
     return () => {
       stopped = true;
@@ -850,7 +909,7 @@ function RightHome() {
       });
     };
 
-    const interval = window.setInterval(syncChatList, 1000);
+    const interval = window.setInterval(syncChatList, 5000);
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         syncChatList();

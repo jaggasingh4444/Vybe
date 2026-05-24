@@ -2,6 +2,7 @@ import cors from "cors";
 import express from "express";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
+import http from "http";
 import path from "path";
 import { fileURLToPath } from "url";
 import authRouter from "./routes/auth.routes.js";
@@ -12,6 +13,7 @@ import contentRouter from "./routes/content.routes.js";
 import userRouter from "./routes/user.routes.js";
 import connectDb from "./config/db.js";
 import { getMedia } from "./controllers/media.controllers.js";
+import { initializeChatSocket } from "./utils/chatSocket.js";
 
 dotenv.config();
 const app = express();
@@ -69,9 +71,12 @@ app.use((error, _req, res, _next) => {
   return res.status(status).json({ message });
 });
 
+const server = http.createServer(app);
+initializeChatSocket(server, corsOptions);
+
 // Start server and connect DB
 connectDb().then(() => {
-  app.listen(port, () => {
+  server.listen(port, () => {
     console.log(`Server started on port ${port}`);
   });
 }).catch(err => console.error("DB connection error:", err));
