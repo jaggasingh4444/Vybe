@@ -20,7 +20,7 @@ const EMOJI_OPTIONS = ["😀", "😂", "😍", "🔥", "❤️", "🙌", "👏",
 const REACTION_OPTIONS = ["❤️", "😂", "🔥", "👏", "😮", "😢", "👍"];
 const STORY_EXPIRY_MS = 24 * 60 * 60 * 1000;
 const STORY_IMAGE_VIEW_DURATION_MS = 7000;
-const STORY_VIDEO_VIEW_DURATION_MS = 60 * 1000;
+const MAX_STORY_VIDEO_DURATION_MS = 60 * 1000;
 const STATUS_AUTO_DISMISS_MS = 1800;
 const CAPTION_LIMIT = 500;
 const TYPING_IDLE_MS = 1400;
@@ -232,7 +232,7 @@ const getStoryViewProgressPercent = (startedAt, now = Date.now(), durationMs = S
   return Math.max(0, Math.min(100, progress));
 };
 const getStoryViewDurationMs = (story) =>
-  story?.mediaType === "video" ? STORY_VIDEO_VIEW_DURATION_MS : STORY_IMAGE_VIEW_DURATION_MS;
+  story?.mediaType === "video" ? MAX_STORY_VIDEO_DURATION_MS : STORY_IMAGE_VIEW_DURATION_MS;
 const getStoryAuthorId = (story) => {
   const author = story?.author;
   if (!author) return "";
@@ -359,6 +359,30 @@ const readFileAsDataUrl = (file) =>
     reader.onload = () => resolve(reader.result);
     reader.onerror = reject;
     reader.readAsDataURL(file);
+  });
+
+const readVideoDurationMs = (file) =>
+  new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const video = document.createElement("video");
+
+    const cleanup = () => {
+      URL.revokeObjectURL(objectUrl);
+      video.removeAttribute("src");
+      video.load();
+    };
+
+    video.preload = "metadata";
+    video.onloadedmetadata = () => {
+      const durationMs = Number.isFinite(video.duration) ? video.duration * 1000 : 0;
+      cleanup();
+      resolve(durationMs);
+    };
+    video.onerror = () => {
+      cleanup();
+      reject(new Error("Could not read video length."));
+    };
+    video.src = objectUrl;
   });
 
 const fetchJsonWithTimeout = async (url, options = {}, timeoutMessage = "Request timed out.") => {
@@ -662,6 +686,7 @@ function Feed() {
   const [storyClock, setStoryClock] = useState(Date.now());
   const [storyViewStartedAt, setStoryViewStartedAt] = useState(0);
   const [storyViewerClock, setStoryViewerClock] = useState(Date.now());
+  const [storyPlaybackDurationMs, setStoryPlaybackDurationMs] = useState(STORY_IMAGE_VIEW_DURATION_MS);
   const [storyReplyText, setStoryReplyText] = useState("");
   const [storyReplyStatus, setStoryReplyStatus] = useState("");
   const [storyReplySending, setStoryReplySending] = useState(false);
@@ -1146,6 +1171,7 @@ function Feed() {
     setStoryReplyStatus("");
     setStoryViewStartedAt(0);
     setStoryViewerClock(Date.now());
+    setStoryPlaybackDurationMs(STORY_IMAGE_VIEW_DURATION_MS);
   }, []);
 
   useEffect(() => {
@@ -1961,6 +1987,18 @@ function Feed() {
     setStoryUploadProgress(4);
 
     try {
+      if (mediaType === "video") {
+        const videoDurationMs = await readVideoDurationMs(file);
+
+        if (!videoDurationMs) {
+          throw new Error("Could not read video length. Please choose another video.");
+        }
+
+        if (videoDurationMs > MAX_STORY_VIDEO_DURATION_MS + 500) {
+          throw new Error("Story video must be 1 minute or less.");
+        }
+      }
+
       const data = await uploadContentWithFile({
         url: apiUrl("/api/content/stories"),
         file,
@@ -2139,6 +2177,7 @@ function Feed() {
     setStoryMenuOpen(false);
     setStoryViewStartedAt(Date.now());
     setStoryViewerClock(Date.now());
+    setStoryPlaybackDurationMs(getStoryViewDurationMs(story));
     setStoryReplyText("");
     setStoryReplyStatus("");
 
@@ -2163,6 +2202,7 @@ function Feed() {
 
       selectedStoryRef.current = data;
       setSelectedStory(data);
+      setStoryPlaybackDurationMs(getStoryViewDurationMs(data));
       setStories((currentStories) =>
         currentStories.map((item) => (item._id === data._id ? data : item))
       );
@@ -2298,10 +2338,10 @@ function Feed() {
     if (storyReplyText.trim()) return;
 
     const elapsed = storyViewerClock - storyViewStartedAt;
-    if (elapsed >= getStoryViewDurationMs(selectedStory)) {
+    if (elapsed >= storyPlaybackDurationMs) {
       openStoryByOffset(1);
     }
-  }, [activeStories, closeStoryViewer, openStoryByOffset, selectedStory, storyReplyText, storyViewStartedAt, storyViewerClock]);
+  }, [activeStories, closeStoryViewer, openStoryByOffset, selectedStory, storyPlaybackDurationMs, storyReplyText, storyViewStartedAt, storyViewerClock]);
 
   const handleDeleteStory = async (story) => {
     if (!story?._id) return;
@@ -3755,7 +3795,7 @@ function Feed() {
     ? getStoryViewProgressPercent(
         storyViewStartedAt,
         storyViewerClock,
-        getStoryViewDurationMs(selectedStory)
+        storyPlaybackDurationMs
       )
     : 0;
   const selectedStoryLiked = selectedStory
@@ -6296,6 +6336,8 @@ function Feed() {
 
                 if (clickedRightSide) {
                   openStoryByOffset(1);
+                } else {
+                  openStoryByOffset(-1);
                 }
               }}
             >
@@ -6319,7 +6361,21 @@ function Feed() {
                   autoPlay
                   playsInline
                   data-story-media
+                  onLoadedMetadata={(event) => {
+                    const durationMs = Number.isFinite(event.currentTarget.duration)
+                      ? Math.min(event.currentTarget.duration * 1000, MAX_STORY_VIDEO_DURATION_MS)
+                      : MAX_STORY_VIDEO_DURATION_MS;
+                    setStoryPlaybackDurationMs(Math.max(1000, durationMs));
+                    setStoryViewStartedAt(Date.now());
+                    setStoryViewerClock(Date.now());
+                    setStoryMediaError(false);
+                  }}
                   onLoadedData={() => setStoryMediaError(false)}
+                  onEnded={() => {
+                    if (!storyReplyText.trim()) {
+                      openStoryByOffset(1);
+                    }
+                  }}
                   onError={() => setStoryMediaError(true)}
                   className="h-full w-full bg-black object-cover"
                 />
