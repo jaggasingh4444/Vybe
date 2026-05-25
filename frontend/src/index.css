@@ -1551,7 +1551,8 @@ body.vybe-theme-active.vybe-light .vybe-settings-logout-row:hover {
   }
 
   .vybe-feed-topbar-home {
-    top: 0.75rem !important;
+    position: relative !important;
+    top: auto !important;
     width: min(800px, calc(100% - 2rem));
     margin: 0.75rem auto 0;
     border: 1px solid var(--vybe-border) !important;
