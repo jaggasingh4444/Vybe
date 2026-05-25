@@ -6863,14 +6863,25 @@ function Feed() {
           <div className="vybe-settings-sheet w-full sm:max-w-[420px] max-h-[92svh] overflow-y-auto bg-[#050505] border-t sm:border border-gray-800 rounded-t-2xl sm:rounded-lg text-white">
             <div className="h-14 px-4 flex items-center justify-between border-b border-gray-900">
               <h2 className="font-semibold">Settings</h2>
-              <button
-                type="button"
-                onClick={() => setMobileSettingsOpen(false)}
-                className="w-9 h-9 flex items-center justify-center text-gray-400"
-                aria-label="Close mobile settings"
-              >
-                <FiX />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleMobileLogout}
+                  className="vybe-settings-header-logout"
+                  aria-label="Log out"
+                >
+                  <FiLogOut />
+                  <span>Logout</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMobileSettingsOpen(false)}
+                  className="w-9 h-9 flex items-center justify-center text-gray-400"
+                  aria-label="Close mobile settings"
+                >
+                  <FiX />
+                </button>
+              </div>
             </div>
 
             <div className="vybe-settings-body p-4">

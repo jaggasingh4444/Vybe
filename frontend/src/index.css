@@ -1374,6 +1374,29 @@ body.vybe-theme-active.vybe-light .vybe-notification-item:hover {
   box-shadow: 0 18px 36px rgba(101, 87, 255, 0.32);
 }
 
+.vybe-settings-header-logout {
+  display: inline-flex;
+  min-height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border: 1px solid rgba(251, 113, 133, 0.22);
+  border-radius: 999px;
+  background: rgba(244, 63, 94, 0.1);
+  padding: 0 0.75rem;
+  color: #fecdd3;
+  font-size: 0.8rem;
+  font-weight: 800;
+  transition:
+    background-color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.vybe-settings-header-logout:hover {
+  background: rgba(244, 63, 94, 0.16);
+  transform: translateY(-1px);
+}
+
 .vybe-settings-menu {
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -1522,6 +1545,12 @@ body.vybe-theme-active.vybe-light .vybe-settings-logout-row {
 body.vybe-theme-active.vybe-light .vybe-settings-logout-row:hover {
   background: #fef2f2 !important;
   color: #b91c1c !important;
+}
+
+body.vybe-theme-active.vybe-light .vybe-settings-header-logout {
+  border-color: #fecaca !important;
+  background: #fef2f2 !important;
+  color: #dc2626 !important;
 }
 
 .vybe-sidebar nav button:hover,
