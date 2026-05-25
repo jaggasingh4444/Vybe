@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useDispatch, useSelector } from "react-redux";
 import dp from "../assets/dp.png";
 import { FaHeart, FaRegBookmark, FaRegComment, FaRegHeart } from "react-icons/fa6";
-import { FiArrowLeft, FiBell, FiCamera, FiCheck, FiChevronLeft, FiChevronRight, FiDownload, FiHome, FiImage, FiLock, FiLogOut, FiMessageCircle, FiMoon, FiMoreVertical, FiPlus, FiSave, FiSearch, FiSend, FiSettings, FiSmile, FiSun, FiTrash2, FiUser, FiVideo, FiX } from "react-icons/fi";
+import { FiArrowLeft, FiBell, FiCamera, FiCheck, FiChevronLeft, FiChevronRight, FiDownload, FiHelpCircle, FiHome, FiImage, FiInfo, FiLock, FiLogOut, FiMessageCircle, FiMoon, FiMoreVertical, FiPlus, FiSave, FiSearch, FiSend, FiSettings, FiShield, FiSmile, FiSun, FiTrash2, FiUser, FiVideo, FiX } from "react-icons/fi";
 import { apiUrl, mediaUrl } from "../config/api";
 import { logout, setUserData } from "../redux/userSlice";
 import { getTabAuthHeaders, markTabLoggedOut, withTabAuth } from "../utils/tabAuth";
@@ -747,11 +747,18 @@ function Feed() {
     typeof window === "undefined" ? false : window.matchMedia("(max-width: 1023px)").matches
   );
   const [mobileSettingsOpen, setMobileSettingsOpen] = useState(false);
+  const [mobileSettingsSection, setMobileSettingsSection] = useState("");
   const [mobileName, setMobileName] = useState("");
   const [mobileUserName, setMobileUserName] = useState("");
   const [mobileProfileImage, setMobileProfileImage] = useState("");
   const [mobileSettingsStatus, setMobileSettingsStatus] = useState("");
   const [mobileSaving, setMobileSaving] = useState(false);
+  const [mobileNotificationsEnabled, setMobileNotificationsEnabled] = useState(() => {
+    return localStorage.getItem("vybe-notifications") !== "off";
+  });
+  const [mobilePrivateAccount, setMobilePrivateAccount] = useState(() => {
+    return localStorage.getItem("vybe-private-account") === "on";
+  });
   const [mobileCurrentPassword, setMobileCurrentPassword] = useState("");
   const [mobileNewPassword, setMobileNewPassword] = useState("");
   const [mobileConfirmPassword, setMobileConfirmPassword] = useState("");
@@ -1198,6 +1205,14 @@ function Feed() {
     setMobileUserName(userData.userName || "");
     setMobileProfileImage(userData.profileImage || "");
   }, [userData]);
+
+  useEffect(() => {
+    localStorage.setItem("vybe-notifications", mobileNotificationsEnabled ? "on" : "off");
+  }, [mobileNotificationsEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem("vybe-private-account", mobilePrivateAccount ? "on" : "off");
+  }, [mobilePrivateAccount]);
 
   useEffect(() => {
     if (!userData?._id) return;
@@ -2237,6 +2252,10 @@ function Feed() {
     markTabLoggedOut();
     dispatch(logout());
     window.location.assign("/forgot-password");
+  };
+
+  const toggleMobileSettingsSection = (section) => {
+    setMobileSettingsSection((currentSection) => (currentSection === section ? "" : section));
   };
 
   const rememberStoryVideoDuration = useCallback((story, durationSeconds) => {
@@ -6838,212 +6857,273 @@ function Feed() {
           <div className="vybe-settings-sheet w-full sm:max-w-[420px] max-h-[92svh] overflow-y-auto bg-[#050505] border-t sm:border border-gray-800 rounded-t-2xl sm:rounded-lg text-white">
             <div className="h-14 px-4 flex items-center justify-between border-b border-gray-900">
               <h2 className="font-semibold">Settings</h2>
-              <div className="flex items-center gap-2">
-                <button
-                  type="submit"
-                  form="vybe-mobile-profile-form"
-                  disabled={mobileSaving}
-                  className="vybe-settings-header-save"
-                >
-                  {mobileSaving ? "Saving" : "Save"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMobileSettingsOpen(false)}
-                  className="w-9 h-9 flex items-center justify-center text-gray-400"
-                  aria-label="Close mobile settings"
-                >
-                  <FiX />
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setMobileSettingsOpen(false)}
+                className="w-9 h-9 flex items-center justify-center text-gray-400"
+                aria-label="Close mobile settings"
+              >
+                <FiX />
+              </button>
             </div>
 
-            <form id="vybe-mobile-profile-form" onSubmit={handleMobileSaveProfile} className="p-4 flex flex-col gap-4">
-              <div className="flex items-center gap-4">
-                <div className="relative w-16 h-16 rounded-full overflow-hidden bg-[#171717]">
-                  <img
-                    src={mediaUrl(mobileProfileImage) || dp}
-                    alt="Profile preview"
-                    className="w-full h-full object-cover"
-                    onError={(event) => {
-                      event.currentTarget.src = dp;
-                    }}
-                  />
-                  <label className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                    <FiCamera />
-                    <input type="file" accept="image/*" onChange={handleMobileAvatarChange} className="hidden" />
-                  </label>
-                </div>
-                <div className="min-w-0">
-                  <p className="font-semibold truncate">{userData?.userName}</p>
-                  <p className="text-sm text-gray-500 truncate">Edit your mobile profile settings.</p>
-                </div>
-              </div>
+            <div className="p-4">
+              <div className="vybe-settings-menu">
+                <SettingsMenuButton
+                  icon={<FiUser />}
+                  title="Edit Profile"
+                  active={mobileSettingsSection === "edit"}
+                  onClick={() => toggleMobileSettingsSection("edit")}
+                />
+                {mobileSettingsSection === "edit" ? (
+                  <div className="vybe-settings-panel">
+                    <form id="vybe-mobile-profile-form" onSubmit={handleMobileSaveProfile} className="flex flex-col gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className="relative w-16 h-16 rounded-full overflow-hidden bg-[#171717]">
+                          <img
+                            src={mediaUrl(mobileProfileImage) || dp}
+                            alt="Profile preview"
+                            className="w-full h-full object-cover"
+                            onError={(event) => {
+                              event.currentTarget.src = dp;
+                            }}
+                          />
+                          <label className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                            <FiCamera />
+                            <input type="file" accept="image/*" onChange={handleMobileAvatarChange} className="hidden" />
+                          </label>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-semibold truncate">{userData?.userName}</p>
+                          <p className="text-sm text-gray-500 truncate">Edit your mobile profile settings.</p>
+                        </div>
+                      </div>
 
-              <input
-                value={mobileName}
-                onChange={(event) => setMobileName(event.target.value)}
-                placeholder="Name"
-                className="h-11 rounded-md bg-[#111] border border-gray-800 px-3 text-white outline-none"
-                required
-              />
-              <input
-                value={mobileUserName}
-                onChange={(event) => setMobileUserName(event.target.value)}
-                placeholder="Username"
-                className="h-11 rounded-md bg-[#111] border border-gray-800 px-3 text-white outline-none"
-                required
-              />
+                      <input
+                        value={mobileName}
+                        onChange={(event) => setMobileName(event.target.value)}
+                        placeholder="Name"
+                        className="h-11 rounded-md bg-[#111] border border-gray-800 px-3 text-white outline-none"
+                        required
+                      />
+                      <input
+                        value={mobileUserName}
+                        onChange={(event) => setMobileUserName(event.target.value)}
+                        placeholder="Username"
+                        className="h-11 rounded-md bg-[#111] border border-gray-800 px-3 text-white outline-none"
+                        required
+                      />
 
-              <div className="border-t border-gray-900 pt-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className="w-10 h-10 rounded-full bg-[#111] flex items-center justify-center text-lg shrink-0">
-                      {theme === "light" ? <FiSun /> : <FiMoon />}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="font-semibold text-sm">Bright mode</p>
-                      <p className="text-xs text-gray-500 truncate">Switch Vybe between dark and bright.</p>
-                    </div>
+                      <p className={`text-sm ${mobileSettingsStatus === "Profile updated." ? "text-green-400" : "text-gray-500"}`}>
+                        {mobileSettingsStatus || "Profile settings are available on mobile now."}
+                      </p>
+
+                      <button
+                        type="submit"
+                        disabled={mobileSaving}
+                        className="vybe-settings-save-button h-12 w-full font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+                      >
+                        <FiSave /> {mobileSaving ? "Saving changes" : "Save changes"}
+                      </button>
+                    </form>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-                    className={`w-12 h-7 rounded-full p-1 transition-colors ${
-                      theme === "light" ? "bg-blue-600" : "bg-gray-700"
-                    }`}
-                    aria-pressed={theme === "light"}
-                  >
-                    <span
-                      className={`block w-5 h-5 rounded-full bg-white transition-transform ${
-                        theme === "light" ? "translate-x-5" : "translate-x-0"
-                      }`}
-                    />
-                  </button>
-                </div>
-              </div>
-
-              <AdminVerificationPanel userData={userData} />
-
-              <div className="border-t border-gray-900 pt-4">
-                <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-900 bg-[#080808] p-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold">Account</p>
-                    <p className="text-xs text-gray-500 truncate">Sign out from this phone.</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleMobileLogout}
-                    className="h-10 shrink-0 rounded-full bg-red-500/10 px-4 text-sm font-semibold text-red-300 flex items-center justify-center gap-2"
-                  >
-                    <FiLogOut /> Logout
-                  </button>
-                </div>
-              </div>
-
-              <div className="border-t border-gray-900 pt-4 flex flex-col gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (mobilePasswordPanelOpen) return;
-                    setMobilePasswordPanelOpen(true);
-                    setMobilePasswordStatus("");
-                  }}
-                  className="flex items-center gap-3 rounded-md text-left hover:bg-[#111]"
-                  aria-expanded={mobilePasswordPanelOpen}
-                >
-                  <span className="w-10 h-10 rounded-full bg-[#111] flex items-center justify-center text-lg shrink-0">
-                    <FiLock />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-sm">Change password</p>
-                    <p className="text-xs text-gray-500 truncate">Use current password before changing.</p>
-                  </div>
-                </button>
-
-                {!mobilePasswordPanelOpen && mobilePasswordStatus ? (
-                  <p className={`text-sm ${mobilePasswordStatus === "Password changed successfully." ? "text-green-400" : "text-gray-500"}`}>
-                    {mobilePasswordStatus}
-                  </p>
                 ) : null}
 
-                {!mobilePasswordPanelOpen ? (
-                  <button
-                    type="button"
-                    onClick={handleMobileForgotPassword}
-                    className="h-11 rounded-md bg-[#111] text-blue-400 font-semibold"
-                  >
-                    Forgot password
-                  </button>
-                ) : (
-                  <>
-                    <input
-                      type="password"
-                      value={mobileCurrentPassword}
-                      onChange={(event) => setMobileCurrentPassword(event.target.value)}
-                      placeholder="Current password"
-                      className="h-11 rounded-md bg-[#111] border border-gray-800 px-3 text-white outline-none placeholder:text-gray-600"
-                    />
-                    <input
-                      type="password"
-                      value={mobileNewPassword}
-                      onChange={(event) => setMobileNewPassword(event.target.value)}
-                      placeholder="New password"
-                      className="h-11 rounded-md bg-[#111] border border-gray-800 px-3 text-white outline-none placeholder:text-gray-600"
-                    />
-                    <input
-                      type="password"
-                      value={mobileConfirmPassword}
-                      onChange={(event) => setMobileConfirmPassword(event.target.value)}
-                      placeholder="Confirm password"
-                      className="h-11 rounded-md bg-[#111] border border-gray-800 px-3 text-white outline-none placeholder:text-gray-600"
-                    />
-
-                    <p className={`text-sm ${mobilePasswordStatus === "Password changed successfully." ? "text-green-400" : "text-gray-500"}`}>
-                      {mobilePasswordStatus || "Forgot password is available on the sign-in screen."}
-                    </p>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setMobilePasswordPanelOpen(false);
-                          setMobileCurrentPassword("");
-                          setMobileNewPassword("");
-                          setMobileConfirmPassword("");
-                          setMobilePasswordStatus("");
-                        }}
-                        className="h-11 rounded-md bg-[#111] text-gray-300 font-semibold"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleMobileChangePassword}
-                        disabled={mobilePasswordSaving}
-                        className="h-11 rounded-md bg-[#171717] text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
-                      >
-                        <FiLock /> {mobilePasswordSaving ? "Changing" : "Save"}
-                      </button>
+                <SettingsMenuButton
+                  icon={<FiUser />}
+                  title="Account"
+                  active={mobileSettingsSection === "account"}
+                  onClick={() => toggleMobileSettingsSection("account")}
+                />
+                {mobileSettingsSection === "account" ? (
+                  <div className="vybe-settings-panel flex flex-col gap-4">
+                    <div className="vybe-settings-info-card">
+                      <p className="text-sm font-semibold">Signed in as @{userData?.userName}</p>
+                      <p className="text-xs text-gray-500">Manage profile status, verification, and appearance.</p>
                     </div>
-                  </>
-                )}
+                    <SettingToggle
+                      icon={theme === "light" ? <FiSun /> : <FiMoon />}
+                      title="Bright mode"
+                      description="Switch Vybe between dark and bright."
+                      checked={theme === "light"}
+                      onChange={(checked) => setTheme(checked ? "light" : "dark")}
+                    />
+                    <AdminVerificationPanel userData={userData} />
+                  </div>
+                ) : null}
+
+                <SettingsMenuButton
+                  icon={<FiLock />}
+                  title="Privacy"
+                  active={mobileSettingsSection === "privacy"}
+                  onClick={() => toggleMobileSettingsSection("privacy")}
+                />
+                {mobileSettingsSection === "privacy" ? (
+                  <div className="vybe-settings-panel">
+                    <SettingToggle
+                      icon={<FiLock />}
+                      title="Private account"
+                      description="Store your privacy preference for this phone."
+                      checked={mobilePrivateAccount}
+                      onChange={setMobilePrivateAccount}
+                    />
+                  </div>
+                ) : null}
+
+                <SettingsMenuButton
+                  icon={<FiBell />}
+                  title="Notifications"
+                  active={mobileSettingsSection === "notifications"}
+                  onClick={() => toggleMobileSettingsSection("notifications")}
+                />
+                {mobileSettingsSection === "notifications" ? (
+                  <div className="vybe-settings-panel">
+                    <SettingToggle
+                      icon={<FiBell />}
+                      title="Notifications"
+                      description="Keep activity alerts enabled in this browser."
+                      checked={mobileNotificationsEnabled}
+                      onChange={setMobileNotificationsEnabled}
+                    />
+                  </div>
+                ) : null}
+
+                <SettingsMenuButton
+                  icon={<FiShield />}
+                  title="Security"
+                  active={mobileSettingsSection === "security"}
+                  onClick={() => toggleMobileSettingsSection("security")}
+                />
+                {mobileSettingsSection === "security" ? (
+                  <div className="vybe-settings-panel flex flex-col gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (mobilePasswordPanelOpen) return;
+                        setMobilePasswordPanelOpen(true);
+                        setMobilePasswordStatus("");
+                      }}
+                      className="flex items-center gap-3 rounded-md text-left hover:bg-[#111]"
+                      aria-expanded={mobilePasswordPanelOpen}
+                    >
+                      <span className="w-10 h-10 rounded-full bg-[#111] flex items-center justify-center text-lg shrink-0">
+                        <FiLock />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-sm">Change password</p>
+                        <p className="text-xs text-gray-500 truncate">Use current password before changing.</p>
+                      </div>
+                    </button>
+
+                    {!mobilePasswordPanelOpen && mobilePasswordStatus ? (
+                      <p className={`text-sm ${mobilePasswordStatus === "Password changed successfully." ? "text-green-400" : "text-gray-500"}`}>
+                        {mobilePasswordStatus}
+                      </p>
+                    ) : null}
+
+                    {!mobilePasswordPanelOpen ? (
+                      <button
+                        type="button"
+                        onClick={handleMobileForgotPassword}
+                        className="h-11 rounded-md bg-[#111] text-blue-400 font-semibold"
+                      >
+                        Forgot password
+                      </button>
+                    ) : (
+                      <>
+                        <input
+                          type="password"
+                          value={mobileCurrentPassword}
+                          onChange={(event) => setMobileCurrentPassword(event.target.value)}
+                          placeholder="Current password"
+                          className="h-11 rounded-md bg-[#111] border border-gray-800 px-3 text-white outline-none placeholder:text-gray-600"
+                        />
+                        <input
+                          type="password"
+                          value={mobileNewPassword}
+                          onChange={(event) => setMobileNewPassword(event.target.value)}
+                          placeholder="New password"
+                          className="h-11 rounded-md bg-[#111] border border-gray-800 px-3 text-white outline-none placeholder:text-gray-600"
+                        />
+                        <input
+                          type="password"
+                          value={mobileConfirmPassword}
+                          onChange={(event) => setMobileConfirmPassword(event.target.value)}
+                          placeholder="Confirm password"
+                          className="h-11 rounded-md bg-[#111] border border-gray-800 px-3 text-white outline-none placeholder:text-gray-600"
+                        />
+
+                        <p className={`text-sm ${mobilePasswordStatus === "Password changed successfully." ? "text-green-400" : "text-gray-500"}`}>
+                          {mobilePasswordStatus || "Forgot password is available on the sign-in screen."}
+                        </p>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMobilePasswordPanelOpen(false);
+                              setMobileCurrentPassword("");
+                              setMobileNewPassword("");
+                              setMobileConfirmPassword("");
+                              setMobilePasswordStatus("");
+                            }}
+                            className="h-11 rounded-md bg-[#111] text-gray-300 font-semibold"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleMobileChangePassword}
+                            disabled={mobilePasswordSaving}
+                            className="h-11 rounded-md bg-[#171717] text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+                          >
+                            <FiLock /> {mobilePasswordSaving ? "Changing" : "Save"}
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ) : null}
+
+                <SettingsMenuButton
+                  icon={<FiHelpCircle />}
+                  title="Help Center"
+                  active={mobileSettingsSection === "help"}
+                  onClick={() => toggleMobileSettingsSection("help")}
+                />
+                {mobileSettingsSection === "help" ? (
+                  <div className="vybe-settings-panel">
+                    <div className="vybe-settings-info-card">
+                      <p className="text-sm font-semibold">Need help?</p>
+                      <p className="text-xs text-gray-500">Use forgot password for account recovery. More help tools can live here later.</p>
+                    </div>
+                  </div>
+                ) : null}
+
+                <SettingsMenuButton
+                  icon={<FiInfo />}
+                  title="About Vybe"
+                  active={mobileSettingsSection === "about"}
+                  onClick={() => toggleMobileSettingsSection("about")}
+                />
+                {mobileSettingsSection === "about" ? (
+                  <div className="vybe-settings-panel">
+                    <div className="vybe-settings-info-card">
+                      <p className="text-sm font-semibold">VYBE</p>
+                      <p className="text-xs text-gray-500">Not just a platform, it&apos;s a VYBE.</p>
+                    </div>
+                  </div>
+                ) : null}
               </div>
 
-              <p className={`text-sm ${mobileSettingsStatus === "Profile updated." ? "text-green-400" : "text-gray-500"}`}>
-                {mobileSettingsStatus || "Profile settings are available on mobile now."}
-              </p>
-
-              <div className="vybe-mobile-settings-actions">
-                <button
-                  type="submit"
-                  disabled={mobileSaving}
-                  className="vybe-settings-save-button h-12 w-full font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
-                >
-                  <FiSave /> {mobileSaving ? "Saving changes" : "Save changes"}
-                </button>
-              </div>
-            </form>
+              <button
+                type="button"
+                onClick={handleMobileLogout}
+                className="vybe-settings-logout-row mt-3"
+              >
+                <FiLogOut /> Log Out
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
@@ -7370,6 +7450,49 @@ function Feed() {
           <span className="text-xs font-semibold">Profile</span>
         </button>
       </div>
+    </div>
+  );
+}
+
+function SettingsMenuButton({ icon, title, active, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`vybe-settings-menu-row ${active ? "is-active" : ""}`}
+      aria-expanded={active}
+    >
+      <span className="vybe-settings-row-icon">{icon}</span>
+      <span className="min-w-0 flex-1 text-sm font-semibold">{title}</span>
+      <FiChevronRight className="vybe-settings-row-arrow" />
+    </button>
+  );
+}
+
+function SettingToggle({ icon, title, description, checked, onChange }) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="w-10 h-10 rounded-full bg-[#111] flex items-center justify-center text-lg shrink-0">
+          {icon}
+        </span>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold">{title}</p>
+          <p className="text-xs text-gray-500 truncate">{description}</p>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => onChange(!checked)}
+        className={`w-12 h-7 rounded-full p-1 transition-colors ${checked ? "bg-blue-600" : "bg-gray-700"}`}
+        aria-pressed={checked}
+      >
+        <span
+          className={`block w-5 h-5 rounded-full bg-white transition-transform ${
+            checked ? "translate-x-5" : "translate-x-0"
+          }`}
+        />
+      </button>
     </div>
   );
 }

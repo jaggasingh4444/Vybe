@@ -9,7 +9,10 @@ import {
   FiBell,
   FiBookmark,
   FiCamera,
+  FiChevronRight,
+  FiHelpCircle,
   FiHome,
+  FiInfo,
   FiLock,
   FiLogOut,
   FiMessageCircle,
@@ -18,6 +21,7 @@ import {
   FiSave,
   FiSearch,
   FiSettings,
+  FiShield,
   FiSun,
   FiUser,
   FiX,
@@ -55,6 +59,7 @@ function LeftHome() {
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordStatus, setPasswordStatus] = useState("");
   const [passwordPanelOpen, setPasswordPanelOpen] = useState(false);
+  const [settingsSection, setSettingsSection] = useState("");
   const [notifications, setNotifications] = useState(() => {
     return localStorage.getItem("vybe-notifications") !== "off";
   });
@@ -211,6 +216,10 @@ function LeftHome() {
     );
   };
 
+  const toggleSettingsSection = (section) => {
+    setSettingsSection((currentSection) => (currentSection === section ? "" : section));
+  };
+
   const menuItems = [
     { icon: <FiHome />, label: "Home", value: "Feed", action: "home" },
     { icon: <FiSearch />, label: "Search", value: "Explore", action: "search" },
@@ -341,207 +350,295 @@ function LeftHome() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveProfile} className="p-5 flex flex-col gap-5">
-              <div className="flex items-center gap-4">
-                <div className="relative w-20 h-20 rounded-full overflow-hidden bg-[#171717] border border-gray-800 shrink-0">
-                  <img
-                    src={mediaUrl(profileImage) || dp}
-                    alt="Profile preview"
-                    className="w-full h-full object-cover"
-                    onError={(event) => {
-                      event.currentTarget.src = dp;
-                    }}
-                  />
-                  <label className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 flex items-center justify-center cursor-pointer">
-                    <FiCamera className="text-2xl" />
-                    <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
-                  </label>
-                </div>
-                <div>
-                  <p className="font-semibold">Edit profile</p>
-                  <p className="text-sm text-gray-500">Update your public name, username, and photo.</p>
-                </div>
-              </div>
-
-              <div className="vybe-settings-profile-grid grid grid-cols-2 gap-3">
-                <label className="flex flex-col gap-2 text-sm text-gray-400">
-                  Name
-                  <input
-                    value={name}
-                    onChange={(event) => setName(event.target.value)}
-                    className="h-11 rounded-md bg-[#111] border border-gray-800 px-3 text-white outline-none focus:border-gray-500"
-                    required
-                  />
-                </label>
-                <label className="flex flex-col gap-2 text-sm text-gray-400">
-                  Username
-                  <input
-                    value={userName}
-                    onChange={(event) => setUserName(event.target.value)}
-                    className="h-11 rounded-md bg-[#111] border border-gray-800 px-3 text-white outline-none focus:border-gray-500"
-                    required
-                  />
-                </label>
-              </div>
-
-              <div className="border-t border-gray-900 pt-4 flex flex-col gap-3">
-                <SettingToggle
-                  icon={<FiBell />}
-                  title="Notifications"
-                  description="Keep activity alerts enabled in this browser."
-                  checked={notifications}
-                  onChange={setNotifications}
+            <div className="p-4 sm:p-5">
+              <div className="vybe-settings-menu">
+                <SettingsMenuButton
+                  icon={<FiUser />}
+                  title="Edit Profile"
+                  active={settingsSection === "edit"}
+                  onClick={() => toggleSettingsSection("edit")}
                 />
-                <SettingToggle
-                  icon={<FiLock />}
-                  title="Private account"
-                  description="Store your privacy preference for this device."
-                  checked={privateAccount}
-                  onChange={setPrivateAccount}
-                />
-                <SettingToggle
-                  icon={theme === "light" ? <FiSun /> : <FiMoon />}
-                  title="Bright mode"
-                  description="Switch Vybe between dark and bright appearance."
-                  checked={theme === "light"}
-                  onChange={(checked) => setTheme(checked ? "light" : "dark")}
-                />
-              </div>
+                {settingsSection === "edit" ? (
+                  <div className="vybe-settings-panel">
+                    <form onSubmit={handleSaveProfile} className="flex flex-col gap-5">
+                      <div className="flex items-center gap-4">
+                        <div className="relative w-20 h-20 rounded-full overflow-hidden bg-[#171717] border border-gray-800 shrink-0">
+                          <img
+                            src={mediaUrl(profileImage) || dp}
+                            alt="Profile preview"
+                            className="w-full h-full object-cover"
+                            onError={(event) => {
+                              event.currentTarget.src = dp;
+                            }}
+                          />
+                          <label className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 flex items-center justify-center cursor-pointer">
+                            <FiCamera className="text-2xl" />
+                            <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
+                          </label>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-semibold">Edit profile</p>
+                          <p className="text-sm text-gray-500">Update your public name, username, and photo.</p>
+                        </div>
+                      </div>
 
-              <AdminVerificationPanel userData={userData} />
+                      <div className="vybe-settings-profile-grid grid grid-cols-2 gap-3">
+                        <label className="flex flex-col gap-2 text-sm text-gray-400">
+                          Name
+                          <input
+                            value={name}
+                            onChange={(event) => setName(event.target.value)}
+                            className="h-11 rounded-md bg-[#111] border border-gray-800 px-3 text-white outline-none focus:border-gray-500"
+                            required
+                          />
+                        </label>
+                        <label className="flex flex-col gap-2 text-sm text-gray-400">
+                          Username
+                          <input
+                            value={userName}
+                            onChange={(event) => setUserName(event.target.value)}
+                            className="h-11 rounded-md bg-[#111] border border-gray-800 px-3 text-white outline-none focus:border-gray-500"
+                            required
+                          />
+                        </label>
+                      </div>
 
-              <div className="border-t border-gray-900 pt-4">
-                <div className="flex items-center justify-between gap-4 rounded-md bg-[#080808] p-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold">Account</p>
-                    <p className="text-xs text-gray-500">Sign out from this browser.</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleLogout}
-                    className="h-10 shrink-0 rounded-md bg-[#171717] px-4 text-sm font-semibold text-red-300 hover:bg-red-500/10 hover:text-red-200"
-                  >
-                    <span className="flex items-center gap-2">
-                      <FiLogOut /> Logout
-                    </span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="border-t border-gray-900 pt-4 flex flex-col gap-3">
-                <div className="flex items-center justify-between gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (passwordPanelOpen) return;
-                      setPasswordPanelOpen(true);
-                      setPasswordStatus("");
-                    }}
-                    className="min-w-0 flex-1 flex items-center gap-3 rounded-md text-left hover:bg-[#111]"
-                    aria-expanded={passwordPanelOpen}
-                  >
-                    <span className="w-10 h-10 rounded-full bg-[#111] flex items-center justify-center text-lg shrink-0">
-                      <FiLock />
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold">Change password</p>
-                      <p className="text-xs text-gray-500 truncate">
-                        Use your current password to set a new one.
-                      </p>
-                    </div>
-                  </button>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleForgotPassword}
-                      className="h-10 px-3 rounded-md text-blue-400 font-semibold hover:bg-[#111]"
-                    >
-                      Forgot password
-                    </button>
-                  </div>
-                </div>
-
-                {!passwordPanelOpen && passwordStatus ? (
-                  <p className={`text-sm ${passwordStatus === "Password changed successfully." ? "text-green-400" : "text-gray-500"}`}>
-                    {passwordStatus}
-                  </p>
-                ) : null}
-
-                {passwordPanelOpen ? (
-                  <>
-                    <div className="grid grid-cols-3 gap-3">
-                      <input
-                        type="password"
-                        value={currentPassword}
-                        onChange={(event) => setCurrentPassword(event.target.value)}
-                        placeholder="Current password"
-                        className="h-11 rounded-md bg-[#111] border border-gray-800 px-3 text-white text-sm outline-none focus:border-gray-500 placeholder:text-gray-600"
-                      />
-                      <input
-                        type="password"
-                        value={newPassword}
-                        onChange={(event) => setNewPassword(event.target.value)}
-                        placeholder="New password"
-                        className="h-11 rounded-md bg-[#111] border border-gray-800 px-3 text-white text-sm outline-none focus:border-gray-500 placeholder:text-gray-600"
-                      />
-                      <input
-                        type="password"
-                        value={confirmPassword}
-                        onChange={(event) => setConfirmPassword(event.target.value)}
-                        placeholder="Confirm password"
-                        className="h-11 rounded-md bg-[#111] border border-gray-800 px-3 text-white text-sm outline-none focus:border-gray-500 placeholder:text-gray-600"
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between gap-3">
-                      <p className={`text-sm ${passwordStatus === "Password changed successfully." ? "text-green-400" : "text-gray-500"}`}>
-                        {passwordStatus || "Forgot password is available on the sign-in screen."}
-                      </p>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className={`text-sm ${status === "Profile updated." ? "text-green-400" : "text-gray-500"}`}>
+                          {status || "Profile settings are saved here."}
+                        </p>
                         <button
-                          type="button"
-                          onClick={() => {
-                            setPasswordPanelOpen(false);
-                            setCurrentPassword("");
-                            setNewPassword("");
-                            setConfirmPassword("");
-                            setPasswordStatus("");
-                          }}
-                          className="h-10 px-3 rounded-md text-gray-400 font-semibold hover:bg-[#111]"
+                          type="submit"
+                          disabled={saving}
+                          className="vybe-settings-save-button h-12 min-w-[11rem] px-6 font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
                         >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleChangePassword}
-                          disabled={passwordSaving}
-                          className="h-10 px-4 rounded-md bg-[#171717] text-white font-semibold flex items-center gap-2 disabled:opacity-60"
-                        >
-                          <FiLock /> {passwordSaving ? "Changing..." : "Save password"}
+                          <FiSave /> {saving ? "Saving changes" : "Save changes"}
                         </button>
                       </div>
+                    </form>
+                  </div>
+                ) : null}
+
+                <SettingsMenuButton
+                  icon={<FiUser />}
+                  title="Account"
+                  active={settingsSection === "account"}
+                  onClick={() => toggleSettingsSection("account")}
+                />
+                {settingsSection === "account" ? (
+                  <div className="vybe-settings-panel flex flex-col gap-4">
+                    <div className="vybe-settings-info-card">
+                      <p className="text-sm font-semibold">Signed in as @{userData?.userName}</p>
+                      <p className="text-xs text-gray-500">Your profile, verification, and account tools stay here.</p>
                     </div>
-                  </>
+                    <SettingToggle
+                      icon={theme === "light" ? <FiSun /> : <FiMoon />}
+                      title="Bright mode"
+                      description="Switch Vybe between dark and bright appearance."
+                      checked={theme === "light"}
+                      onChange={(checked) => setTheme(checked ? "light" : "dark")}
+                    />
+                    <AdminVerificationPanel userData={userData} />
+                  </div>
+                ) : null}
+
+                <SettingsMenuButton
+                  icon={<FiLock />}
+                  title="Privacy"
+                  active={settingsSection === "privacy"}
+                  onClick={() => toggleSettingsSection("privacy")}
+                />
+                {settingsSection === "privacy" ? (
+                  <div className="vybe-settings-panel">
+                    <SettingToggle
+                      icon={<FiLock />}
+                      title="Private account"
+                      description="Store your privacy preference for this device."
+                      checked={privateAccount}
+                      onChange={setPrivateAccount}
+                    />
+                  </div>
+                ) : null}
+
+                <SettingsMenuButton
+                  icon={<FiBell />}
+                  title="Notifications"
+                  active={settingsSection === "notifications"}
+                  onClick={() => toggleSettingsSection("notifications")}
+                />
+                {settingsSection === "notifications" ? (
+                  <div className="vybe-settings-panel">
+                    <SettingToggle
+                      icon={<FiBell />}
+                      title="Notifications"
+                      description="Keep activity alerts enabled in this browser."
+                      checked={notifications}
+                      onChange={setNotifications}
+                    />
+                  </div>
+                ) : null}
+
+                <SettingsMenuButton
+                  icon={<FiShield />}
+                  title="Security"
+                  active={settingsSection === "security"}
+                  onClick={() => toggleSettingsSection("security")}
+                />
+                {settingsSection === "security" ? (
+                  <div className="vybe-settings-panel flex flex-col gap-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (passwordPanelOpen) return;
+                          setPasswordPanelOpen(true);
+                          setPasswordStatus("");
+                        }}
+                        className="min-w-0 flex-1 flex items-center gap-3 rounded-md text-left hover:bg-[#111]"
+                        aria-expanded={passwordPanelOpen}
+                      >
+                        <span className="w-10 h-10 rounded-full bg-[#111] flex items-center justify-center text-lg shrink-0">
+                          <FiLock />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold">Change password</p>
+                          <p className="text-xs text-gray-500 truncate">
+                            Use your current password to set a new one.
+                          </p>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleForgotPassword}
+                        className="h-10 px-3 rounded-md text-blue-400 font-semibold hover:bg-[#111]"
+                      >
+                        Forgot password
+                      </button>
+                    </div>
+
+                    {!passwordPanelOpen && passwordStatus ? (
+                      <p className={`text-sm ${passwordStatus === "Password changed successfully." ? "text-green-400" : "text-gray-500"}`}>
+                        {passwordStatus}
+                      </p>
+                    ) : null}
+
+                    {passwordPanelOpen ? (
+                      <>
+                        <div className="grid grid-cols-3 gap-3">
+                          <input
+                            type="password"
+                            value={currentPassword}
+                            onChange={(event) => setCurrentPassword(event.target.value)}
+                            placeholder="Current password"
+                            className="h-11 rounded-md bg-[#111] border border-gray-800 px-3 text-white text-sm outline-none focus:border-gray-500 placeholder:text-gray-600"
+                          />
+                          <input
+                            type="password"
+                            value={newPassword}
+                            onChange={(event) => setNewPassword(event.target.value)}
+                            placeholder="New password"
+                            className="h-11 rounded-md bg-[#111] border border-gray-800 px-3 text-white text-sm outline-none focus:border-gray-500 placeholder:text-gray-600"
+                          />
+                          <input
+                            type="password"
+                            value={confirmPassword}
+                            onChange={(event) => setConfirmPassword(event.target.value)}
+                            placeholder="Confirm password"
+                            className="h-11 rounded-md bg-[#111] border border-gray-800 px-3 text-white text-sm outline-none focus:border-gray-500 placeholder:text-gray-600"
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between gap-3">
+                          <p className={`text-sm ${passwordStatus === "Password changed successfully." ? "text-green-400" : "text-gray-500"}`}>
+                            {passwordStatus || "Forgot password is available on the sign-in screen."}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPasswordPanelOpen(false);
+                                setCurrentPassword("");
+                                setNewPassword("");
+                                setConfirmPassword("");
+                                setPasswordStatus("");
+                              }}
+                              className="h-10 px-3 rounded-md text-gray-400 font-semibold hover:bg-[#111]"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleChangePassword}
+                              disabled={passwordSaving}
+                              className="h-10 px-4 rounded-md bg-[#171717] text-white font-semibold flex items-center gap-2 disabled:opacity-60"
+                            >
+                              <FiLock /> {passwordSaving ? "Changing..." : "Save password"}
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                <SettingsMenuButton
+                  icon={<FiHelpCircle />}
+                  title="Help Center"
+                  active={settingsSection === "help"}
+                  onClick={() => toggleSettingsSection("help")}
+                />
+                {settingsSection === "help" ? (
+                  <div className="vybe-settings-panel">
+                    <div className="vybe-settings-info-card">
+                      <p className="text-sm font-semibold">Need help?</p>
+                      <p className="text-xs text-gray-500">Use forgot password for account recovery. More help tools can live here later.</p>
+                    </div>
+                  </div>
+                ) : null}
+
+                <SettingsMenuButton
+                  icon={<FiInfo />}
+                  title="About Vybe"
+                  active={settingsSection === "about"}
+                  onClick={() => toggleSettingsSection("about")}
+                />
+                {settingsSection === "about" ? (
+                  <div className="vybe-settings-panel">
+                    <div className="vybe-settings-info-card">
+                      <p className="text-sm font-semibold">VYBE</p>
+                      <p className="text-xs text-gray-500">Not just a platform, it&apos;s a VYBE.</p>
+                    </div>
+                  </div>
                 ) : null}
               </div>
 
-              <div className="flex items-center justify-between gap-3 border-t border-gray-900 pt-4">
-                <p className={`text-sm ${status === "Profile updated." ? "text-green-400" : "text-gray-500"}`}>
-                  {status || "Settings are saved instantly where possible."}
-                </p>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="vybe-settings-save-button h-12 min-w-[11rem] px-6 font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
-                >
-                  <FiSave /> {saving ? "Saving changes" : "Save changes"}
-                </button>
-              </div>
-            </form>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="vybe-settings-logout-row mt-3"
+              >
+                <FiLogOut /> Log Out
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
     </aside>
+  );
+}
+
+function SettingsMenuButton({ icon, title, active, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`vybe-settings-menu-row ${active ? "is-active" : ""}`}
+      aria-expanded={active}
+    >
+      <span className="vybe-settings-row-icon">{icon}</span>
+      <span className="min-w-0 flex-1 text-sm font-semibold">{title}</span>
+      <FiChevronRight className="vybe-settings-row-arrow" />
+    </button>
   );
 }
 

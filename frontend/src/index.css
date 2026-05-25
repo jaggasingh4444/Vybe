@@ -1374,6 +1374,88 @@ body.vybe-theme-active.vybe-light .vybe-notification-item:hover {
   box-shadow: 0 18px 36px rgba(101, 87, 255, 0.32);
 }
 
+.vybe-settings-menu {
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.vybe-settings-menu-row {
+  display: flex;
+  min-height: 3.65rem;
+  width: 100%;
+  align-items: center;
+  gap: 0.85rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 0 1rem;
+  color: #f8fafc;
+  text-align: left;
+  transition:
+    background-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.vybe-settings-menu-row:hover,
+.vybe-settings-menu-row.is-active {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.vybe-settings-row-icon {
+  display: inline-flex;
+  height: 2rem;
+  width: 2rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #aeb8cc;
+}
+
+.vybe-settings-row-arrow {
+  flex: 0 0 auto;
+  color: #7f8aa3;
+  transition: transform 0.18s ease;
+}
+
+.vybe-settings-menu-row.is-active .vybe-settings-row-arrow {
+  transform: rotate(90deg);
+}
+
+.vybe-settings-panel {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(2, 6, 23, 0.22);
+  padding: 1rem;
+}
+
+.vybe-settings-info-card {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0.9rem;
+}
+
+.vybe-settings-logout-row {
+  display: flex;
+  min-height: 3.25rem;
+  width: 100%;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 18px;
+  padding: 0 1rem;
+  color: #fb7185;
+  font-weight: 700;
+  transition:
+    background-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.vybe-settings-logout-row:hover {
+  background: rgba(244, 63, 94, 0.1);
+  color: #fecdd3;
+}
+
 .vybe-create-sheet > div:first-child,
 .vybe-settings-sheet > div:first-child {
   position: sticky;
@@ -1397,6 +1479,49 @@ body.vybe-theme-active.vybe-light .vybe-settings-sheet {
 body.vybe-theme-active.vybe-light .vybe-create-sheet > div:first-child,
 body.vybe-theme-active.vybe-light .vybe-settings-sheet > div:first-child {
   background: rgba(255, 255, 255, 0.98);
+}
+
+body.vybe-theme-active.vybe-light .vybe-settings-menu {
+  border-color: var(--vybe-light-border) !important;
+  background: #ffffff !important;
+}
+
+body.vybe-theme-active.vybe-light .vybe-settings-menu-row {
+  border-color: var(--vybe-light-border) !important;
+  color: var(--vybe-light-text) !important;
+}
+
+body.vybe-theme-active.vybe-light .vybe-settings-menu-row:hover,
+body.vybe-theme-active.vybe-light .vybe-settings-menu-row.is-active {
+  background: #f8fafc !important;
+}
+
+body.vybe-theme-active.vybe-light .vybe-settings-row-icon {
+  background: #f1f5f9 !important;
+  color: var(--vybe-light-muted) !important;
+}
+
+body.vybe-theme-active.vybe-light .vybe-settings-row-arrow {
+  color: #98a2b3 !important;
+}
+
+body.vybe-theme-active.vybe-light .vybe-settings-panel {
+  border-color: var(--vybe-light-border) !important;
+  background: #f8fafc !important;
+}
+
+body.vybe-theme-active.vybe-light .vybe-settings-info-card {
+  border-color: var(--vybe-light-border) !important;
+  background: #ffffff !important;
+}
+
+body.vybe-theme-active.vybe-light .vybe-settings-logout-row {
+  color: #dc2626 !important;
+}
+
+body.vybe-theme-active.vybe-light .vybe-settings-logout-row:hover {
+  background: #fef2f2 !important;
+  color: #b91c1c !important;
 }
 
 .vybe-sidebar nav button:hover,
@@ -1562,7 +1687,7 @@ body.vybe-theme-active.vybe-light .vybe-settings-sheet > div:first-child {
   }
 
   .vybe-create-sheet > div:last-child,
-  .vybe-settings-sheet form {
+  .vybe-settings-sheet > form {
     padding-bottom: max(1.25rem, env(safe-area-inset-bottom)) !important;
   }
 
