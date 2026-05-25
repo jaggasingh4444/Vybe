@@ -4565,7 +4565,9 @@ function Feed() {
       }`}
     >
       <div
-        className={`sticky top-0 z-20 shrink-0 bg-black/95 border-b border-gray-900 px-5 py-4 items-center justify-between ${
+        className={`vybe-feed-topbar ${
+          activeMobileTab === "home" ? "vybe-feed-topbar-home" : ""
+        } sticky top-0 z-20 shrink-0 bg-black/95 border-b border-gray-900 px-5 py-4 items-center justify-between ${
           isMobileChatTab && selectedMobileChat ? "hidden" : "flex"
         }`}
       >
@@ -4869,7 +4871,7 @@ function Feed() {
         </div>
       ) : null}
 
-      <div className={`w-full overflow-x-auto border-b border-gray-900 px-5 py-4 ${
+      <div className={`vybe-story-strip w-full overflow-x-auto border-b border-gray-900 px-5 py-4 ${
         activeMobileTab === "profile" || activeMobileTab === "search"
           ? "hidden"
           : activeMobileTab !== "home"
@@ -5071,7 +5073,9 @@ function Feed() {
 
       <div
         style={mobileChatContentStyle}
-        className={`w-full max-w-[660px] xl:max-w-[700px] mx-auto flex flex-col ${
+        className={`vybe-feed-content ${
+          activeMobileTab === "home" || activeMobileTab === "search" ? "vybe-feed-content-main" : ""
+        } w-full max-w-[660px] xl:max-w-[700px] mx-auto flex flex-col ${
           isMobileReelFeed
             ? "px-0 py-0 gap-0"
             : isMobileChatTab
@@ -5805,7 +5809,7 @@ function Feed() {
 	              className={
 	                isMobileReelFeed
 	                  ? "vybe-feed-card min-h-[calc(100vh-9rem)] snap-start border-b border-gray-900 bg-black overflow-hidden flex flex-col"
-	                  : "vybe-feed-card border border-gray-900 rounded-lg overflow-hidden bg-black"
+	                  : "vybe-feed-card vybe-feed-post border border-gray-900 rounded-lg overflow-hidden bg-black"
 	              }
 	            >
               <div className="vybe-feed-card-header flex items-center justify-between px-4 py-3">
@@ -5890,11 +5894,11 @@ function Feed() {
                 className={
                   isMobileReelFeed
                     ? "min-h-0 flex-1 bg-black flex items-center justify-center"
-                    : "bg-[#101010]"
+                    : "vybe-feed-media-frame bg-[#101010]"
                 }
               >
                 {renderAsTextPost ? (
-                  <div className="min-h-[220px] w-full bg-[#080808] px-6 py-10 flex items-center justify-center">
+                  <div className="vybe-feed-text-frame min-h-[220px] w-full bg-[#080808] px-6 py-10 flex items-center justify-center">
                     <p className="max-w-2xl whitespace-pre-wrap break-words text-center text-2xl font-semibold leading-snug text-white">
                       {item.caption}
                     </p>
@@ -5944,8 +5948,8 @@ function Feed() {
                 )}
               </div>
 
-              <div className="px-4 py-4">
-                <div className="flex items-center justify-between text-white text-2xl">
+              <div className="vybe-feed-card-body px-4 py-4">
+                <div className="vybe-feed-actions-row flex items-center justify-between text-white text-2xl">
                   <div className="flex items-center gap-4">
                     <button
                       type="button"
@@ -5965,9 +5969,9 @@ function Feed() {
                   </div>
                   <FaRegBookmark />
                 </div>
-                <p className="text-white text-sm font-semibold mt-4">{item.likes?.length || 0} likes</p>
+                <p className="vybe-feed-likes text-white text-sm font-semibold mt-4">{item.likes?.length || 0} likes</p>
                 {item.caption && !renderAsTextPost ? (
-                  <p className="text-sm mt-1">
+                  <p className="vybe-feed-caption text-sm mt-1">
                     <span className="mr-2 inline-flex max-w-full items-center gap-1 align-bottom text-white font-semibold">
                       <span className="truncate">{item.author?.userName || "vybe_user"}</span>
                       {item.author?.isVerified ? <VerifiedBadge /> : null}
@@ -5980,14 +5984,14 @@ function Feed() {
                   <button
                     type="button"
                     onClick={() => setSelectedProfileItem(item)}
-                    className="mt-2 text-sm text-gray-500 hover:text-white"
+                    className="vybe-feed-view-comments mt-2 text-sm text-gray-500 hover:text-white"
                   >
                     View all {item.comments.length} {item.comments.length === 1 ? "comment" : "comments"}
                   </button>
                 ) : null}
 
                 {item.comments?.length > 0 ? (
-                  <div className="mt-3 flex flex-col gap-2">
+                  <div className="vybe-feed-comments-preview mt-3 flex flex-col gap-2">
                     {item.comments.length > 3 ? (
                       <p className="text-xs text-gray-600">
                         Showing latest 3 of {item.comments.length} comments
@@ -5997,13 +6001,15 @@ function Feed() {
                   </div>
                 ) : null}
 
-                {renderCommentComposer(item)}
+                <div className="vybe-feed-comment-composer-shell">
+                  {renderCommentComposer(item)}
+                </div>
               </div>
             </article>
             );
           })
         ) : (
-	          <article className="vybe-feed-card border border-gray-900 rounded-lg overflow-hidden bg-black">
+	          <article className="vybe-feed-card vybe-feed-post border border-gray-900 rounded-lg overflow-hidden bg-black">
             <div className="aspect-square bg-[#101010] flex items-center justify-center px-6 text-center">
               <div>
                 <p className="text-white text-lg font-semibold">

@@ -1549,6 +1549,158 @@ body.vybe-theme-active.vybe-light .vybe-settings-logout-row:hover {
     border-radius: 28px;
     overflow: hidden auto;
   }
+
+  .vybe-feed-topbar-home {
+    top: 0.75rem !important;
+    width: min(540px, calc(100% - 2rem));
+    margin: 0.75rem auto 0;
+    border: 1px solid var(--vybe-border) !important;
+    border-bottom: 0 !important;
+    border-radius: 20px 20px 0 0;
+    background: var(--vybe-surface-strong) !important;
+    box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
+  }
+
+  .vybe-feed-content-main {
+    max-width: min(540px, calc(100% - 2rem)) !important;
+    padding-inline: 0 !important;
+    padding-top: 1.05rem !important;
+    gap: 1.15rem !important;
+  }
+
+  .vybe-story-strip {
+    max-width: min(540px, calc(100% - 2rem));
+    margin: 0 auto;
+    border: 1px solid var(--vybe-border) !important;
+    border-top: 0 !important;
+    border-radius: 0 0 20px 20px;
+    background: var(--vybe-surface-strong) !important;
+    box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
+  }
+
+  .vybe-story-strip > div {
+    gap: 1rem;
+  }
+
+  .vybe-feed-post {
+    max-width: 540px;
+    border: 1px solid rgba(129, 140, 248, 0.2) !important;
+    border-radius: 20px !important;
+    overflow: hidden;
+    background: var(--vybe-surface-strong) !important;
+    box-shadow:
+      0 18px 42px rgba(15, 23, 42, 0.08),
+      inset 0 1px rgba(255, 255, 255, 0.06) !important;
+  }
+
+  body.vybe-theme-active:not(.vybe-light) .vybe-feed-post {
+    border-color: rgba(129, 140, 248, 0.22) !important;
+    background: #090d1a !important;
+    box-shadow:
+      0 18px 46px rgba(0, 0, 0, 0.2),
+      inset 0 1px rgba(255, 255, 255, 0.045) !important;
+  }
+
+  .vybe-feed-post .vybe-feed-card-header {
+    min-height: 62px;
+    padding: 0.72rem 0.95rem !important;
+    border-bottom: 1px solid var(--vybe-border);
+    background: transparent;
+  }
+
+  .vybe-feed-post .vybe-feed-card-header img {
+    width: 2.45rem !important;
+    height: 2.45rem !important;
+  }
+
+  .vybe-feed-post .vybe-feed-card-options > button {
+    width: 2.35rem !important;
+    height: 2.35rem !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  body.vybe-theme-active:not(.vybe-light) .vybe-feed-post .vybe-feed-card-options > button {
+    background: transparent !important;
+  }
+
+  .vybe-feed-media-frame {
+    display: flex;
+    aspect-ratio: 4 / 3;
+    max-height: min(56vh, 500px);
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: #060713 !important;
+  }
+
+  .vybe-feed-media-frame > img,
+  .vybe-feed-media-frame > video {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+    max-height: none !important;
+    object-fit: cover !important;
+    background: #060713 !important;
+  }
+
+  .vybe-feed-text-frame {
+    min-height: 290px !important;
+    background:
+      radial-gradient(circle at 20% 18%, rgba(124, 92, 255, 0.18), transparent 36%),
+      linear-gradient(145deg, rgba(13, 17, 34, 0.96), rgba(7, 9, 18, 0.98)) !important;
+  }
+
+  .vybe-feed-text-frame p {
+    max-width: 24rem !important;
+    font-size: clamp(1.25rem, 1.9vw, 1.7rem) !important;
+    line-height: 1.18 !important;
+  }
+
+  .vybe-feed-post .vybe-feed-card-body {
+    display: flex;
+    flex-direction: column;
+    padding: 0.85rem 0.95rem 1rem !important;
+    gap: 0.45rem;
+  }
+
+  .vybe-feed-post .vybe-feed-actions-row {
+    order: 2;
+    font-size: 1.35rem !important;
+    color: rgba(255, 255, 255, 0.92) !important;
+  }
+
+  .vybe-feed-post .vybe-feed-actions-row > div {
+    gap: 1.1rem !important;
+  }
+
+  .vybe-feed-post .vybe-feed-caption {
+    order: 1;
+    margin-top: 0 !important;
+    color: #d7dce8 !important;
+  }
+
+  .vybe-feed-post .vybe-feed-likes {
+    order: 3;
+    margin-top: 0.15rem !important;
+    font-size: 0.86rem !important;
+  }
+
+  .vybe-feed-post .vybe-feed-view-comments {
+    order: 4;
+    margin-top: 0 !important;
+    font-size: 0.86rem !important;
+  }
+
+  .vybe-feed-post .vybe-feed-comments-preview {
+    order: 5;
+    margin-top: 0.2rem !important;
+  }
+
+  .vybe-feed-post .vybe-feed-comment-composer-shell {
+    order: 6;
+    margin-top: 0.25rem;
+  }
 }
 
 @media (max-width: 1023px) {
