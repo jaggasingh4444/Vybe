@@ -6873,7 +6873,7 @@ function Feed() {
               </button>
             </div>
 
-            <div className="p-4">
+            <div className="vybe-settings-body p-4">
               <div className="vybe-settings-menu">
                 <SettingsMenuButton
                   icon={<FiUser />}
@@ -7122,10 +7122,12 @@ function Feed() {
                 ) : null}
               </div>
 
+            </div>
+            <div className="vybe-mobile-settings-actions">
               <button
                 type="button"
                 onClick={handleMobileLogout}
-                className="vybe-settings-logout-row mt-3"
+                className="vybe-settings-logout-row"
               >
                 <FiLogOut /> Log Out
               </button>
