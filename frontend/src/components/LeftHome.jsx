@@ -532,9 +532,9 @@ function LeftHome() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="h-10 px-5 rounded-md bg-white text-black font-semibold flex items-center gap-2 disabled:opacity-60"
+                  className="vybe-settings-save-button h-12 min-w-[11rem] px-6 font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
                 >
-                  <FiSave /> {saving ? "Saving..." : "Save"}
+                  <FiSave /> {saving ? "Saving changes" : "Save changes"}
                 </button>
               </div>
             </form>
