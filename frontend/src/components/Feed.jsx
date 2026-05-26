@@ -677,6 +677,7 @@ function Feed() {
   const [profileContentType, setProfileContentType] = useState("all");
   const [profileBusy, setProfileBusy] = useState(false);
   const [selectedProfileItem, setSelectedProfileItem] = useState(null);
+  const [selectedProfileItemView, setSelectedProfileItemView] = useState("media");
   const [focusedNotificationTarget, setFocusedNotificationTarget] = useState(null);
   const [profileItemMenuOpen, setProfileItemMenuOpen] = useState(false);
   const [feedItemMenuKey, setFeedItemMenuKey] = useState("");
@@ -3358,6 +3359,7 @@ function Feed() {
     const handleOpenSharedContent = (event) => {
       const sharedItem = event.detail?.item || sharedContentToFeedItem(event.detail?.sharedContent);
       if (sharedItem) {
+        setSelectedProfileItemView("media");
         setSelectedProfileItem(sharedItem);
       }
     };
@@ -3891,6 +3893,7 @@ function Feed() {
     setSelectedMobileChat(null);
     setCreateOpen(false);
     setProfileItemMenuOpen(false);
+    setSelectedProfileItemView("comments");
     setSelectedProfileItem(targetItem);
     const { commentId, replyId } = resolveNotificationCommentTarget(notification, targetItem);
     setFocusedNotificationTarget({
@@ -4012,6 +4015,7 @@ function Feed() {
     isTextPost(selectedProfileItem) || brokenMediaKeys.has(selectedProfileItemKey);
   const selectedProfileItemIsOwn = isSameId(selectedProfileItem?.author?._id, userData?._id);
   const selectedProfileItemDeletePending = pendingContentDeleteIds.has(selectedProfileItemKey);
+  const selectedProfileItemCommentView = selectedProfileItemView === "comments";
   const deleteConfirmItemKey = getContentKey(deleteConfirmItem);
   const deleteConfirmPending = pendingContentDeleteIds.has(deleteConfirmItemKey);
   const profileIsFollowing = activeProfileUser?._id
@@ -4252,7 +4256,10 @@ function Feed() {
       <div className="mt-2 w-64 max-w-full overflow-hidden rounded-lg border border-white/10 bg-black/30 text-left">
         <button
           type="button"
-          onClick={() => setSelectedProfileItem(sharedItem)}
+          onClick={() => {
+            setSelectedProfileItemView("media");
+            setSelectedProfileItem(sharedItem);
+          }}
           className="block w-full text-left"
         >
           <div className="flex gap-3 p-2">
@@ -5271,7 +5278,10 @@ function Feed() {
                           type="button"
                           key={`${item.type}-${item._id}`}
                           className="vybe-profile-tile"
-                          onClick={() => setSelectedProfileItem(item)}
+                          onClick={() => {
+                            setSelectedProfileItemView("media");
+                            setSelectedProfileItem(item);
+                          }}
                           title={item.caption || item.type}
                         >
                           {renderAsTextPost ? (
@@ -5960,7 +5970,14 @@ function Feed() {
                     >
                       {itemLiked ? <FaHeart /> : <FaRegHeart />}
                     </button>
-                    <button type="button" onClick={() => setSelectedProfileItem(item)} aria-label="View comments">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedProfileItemView("comments");
+                        setSelectedProfileItem(item);
+                      }}
+                      aria-label="View comments"
+                    >
                       <FaRegComment />
                     </button>
                     <button type="button" onClick={() => openShareSheet(item)} aria-label={`Share ${getContentTypeLabel(item)}`}>
@@ -5983,7 +6000,10 @@ function Feed() {
                 {item.comments?.length > 0 ? (
                   <button
                     type="button"
-                    onClick={() => setSelectedProfileItem(item)}
+                    onClick={() => {
+                      setSelectedProfileItemView("comments");
+                      setSelectedProfileItem(item);
+                    }}
                     className="vybe-feed-view-comments mt-2 text-sm text-gray-500 hover:text-white"
                   >
                     View all {item.comments.length} {item.comments.length === 1 ? "comment" : "comments"}
@@ -6357,15 +6377,20 @@ function Feed() {
 
       {selectedProfileItem ? (
         <div
-          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center px-0 sm:px-4 text-white"
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center px-0 sm:px-4 text-white backdrop-blur-sm"
           onClick={() => {
             setSelectedProfileItem(null);
+            setSelectedProfileItemView("media");
             setFocusedNotificationTarget(null);
           }}
         >
           <div
             ref={selectedProfileItemModalRef}
-            className="relative w-full max-w-[620px] max-h-[94vh] overflow-y-auto bg-[#050505] sm:border border-gray-800 sm:rounded-lg"
+            className={`relative w-full overflow-y-auto bg-[#050505] sm:border border-gray-800 ${
+              selectedProfileItemCommentView
+                ? "max-w-[560px] max-h-[82vh] rounded-t-2xl sm:rounded-2xl"
+                : "max-w-[620px] max-h-[94vh] sm:rounded-lg"
+            }`}
             onClick={(event) => event.stopPropagation()}
           >
             <div className="sticky top-0 z-10 h-14 px-4 flex items-center justify-between border-b border-gray-900 bg-[#050505]/95">
@@ -6388,7 +6413,11 @@ function Feed() {
                     {selectedProfileItem.author?.isVerified ? <VerifiedBadge /> : null}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {selectedProfileItem.type === "reel" ? "Reel" : "Post"}
+                    {selectedProfileItemCommentView
+                      ? "Comments"
+                      : selectedProfileItem.type === "reel"
+                        ? "Reel"
+                        : "Post"}
                   </p>
                 </div>
               </button>
@@ -6426,6 +6455,7 @@ function Feed() {
                   type="button"
                   onClick={() => {
                     setSelectedProfileItem(null);
+                    setSelectedProfileItemView("media");
                     setFocusedNotificationTarget(null);
                   }}
                   className="w-9 h-9 rounded-full bg-[#111] text-gray-300 flex items-center justify-center"
@@ -6436,33 +6466,47 @@ function Feed() {
               </div>
             </div>
 
-            <div className="bg-black flex items-center justify-center">
-              {selectedProfileItemIsTextPost ? (
-                <div className="flex min-h-[320px] w-full items-center justify-center bg-[#080808] px-8 py-12">
-                  <p className="max-w-2xl whitespace-pre-wrap break-words text-center text-3xl font-semibold leading-snug text-white">
-                    {selectedProfileItem.caption}
+            {!selectedProfileItemCommentView ? (
+              <div className="bg-black flex items-center justify-center">
+                {selectedProfileItemIsTextPost ? (
+                  <div className="flex min-h-[320px] w-full items-center justify-center bg-[#080808] px-8 py-12">
+                    <p className="max-w-2xl whitespace-pre-wrap break-words text-center text-3xl font-semibold leading-snug text-white">
+                      {selectedProfileItem.caption}
+                    </p>
+                  </div>
+                ) : selectedProfileItem.mediaType === "video" ? (
+                  <video
+                    src={mediaUrl(selectedProfileItem.media)}
+                    controls
+                    autoPlay
+                    playsInline
+                    onError={() => markBrokenMedia(selectedProfileItem)}
+                    className="w-full max-h-[72vh] bg-black object-contain"
+                  />
+                ) : (
+                  <img
+                    src={mediaUrl(selectedProfileItem.media)}
+                    alt={selectedProfileItem.caption || "Profile media"}
+                    onError={() => markBrokenMedia(selectedProfileItem)}
+                    className="w-full max-h-[72vh] object-contain bg-black"
+                  />
+                )}
+              </div>
+            ) : null}
+
+            <div className={selectedProfileItemCommentView ? "p-4 sm:p-5" : "p-4"}>
+              {selectedProfileItemCommentView && selectedProfileItem.caption ? (
+                <div className="mb-4 rounded-2xl border border-gray-900 bg-[#080808] p-3">
+                  <p className="text-sm leading-relaxed">
+                    <span className="mr-2 inline-flex max-w-full items-center gap-1 align-bottom font-semibold text-white">
+                      <span className="truncate">{selectedProfileItem.author?.userName || "vybe_user"}</span>
+                      {selectedProfileItem.author?.isVerified ? <VerifiedBadge /> : null}
+                    </span>
+                    <span className="text-gray-300">{selectedProfileItem.caption}</span>
                   </p>
                 </div>
-              ) : selectedProfileItem.mediaType === "video" ? (
-                <video
-                  src={mediaUrl(selectedProfileItem.media)}
-                  controls
-                  autoPlay
-                  playsInline
-                  onError={() => markBrokenMedia(selectedProfileItem)}
-                  className="w-full max-h-[72vh] bg-black object-contain"
-                />
-              ) : (
-                <img
-                  src={mediaUrl(selectedProfileItem.media)}
-                  alt={selectedProfileItem.caption || "Profile media"}
-                  onError={() => markBrokenMedia(selectedProfileItem)}
-                  className="w-full max-h-[72vh] object-contain bg-black"
-                />
-              )}
-            </div>
+              ) : null}
 
-            <div className="p-4">
               <div className="flex items-center justify-between text-sm text-gray-400">
                 <span>{selectedProfileItem.likes?.length || 0} likes</span>
                 <div className="flex items-center gap-3">
@@ -6477,7 +6521,7 @@ function Feed() {
                 </div>
               </div>
 
-              {selectedProfileItem.caption && !selectedProfileItemIsTextPost ? (
+              {!selectedProfileItemCommentView && selectedProfileItem.caption && !selectedProfileItemIsTextPost ? (
                 <p className="mt-3 text-sm">
                   <span className="mr-2 inline-flex max-w-full items-center gap-1 align-bottom font-semibold text-white">
                     <span className="truncate">{selectedProfileItem.author?.userName || "vybe_user"}</span>
@@ -6498,7 +6542,11 @@ function Feed() {
                 </div>
 
                 {selectedProfileItem.comments?.length > 0 ? (
-                  <div className="max-h-56 overflow-y-auto pr-1 flex flex-col gap-3">
+                  <div
+                    className={`overflow-y-auto pr-1 flex flex-col gap-3 ${
+                      selectedProfileItemCommentView ? "max-h-[48vh] sm:max-h-[54vh]" : "max-h-56"
+                    }`}
+                  >
                     {selectedProfileItem.comments
                       .map((comment) => renderCommentThread(selectedProfileItem, comment, { replyLimit: 2 }))}
                   </div>
